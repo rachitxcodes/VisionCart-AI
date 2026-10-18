@@ -1,0 +1,25 @@
+# VisionCart AI - Custom YOLOv8 Dataset Configuration
+# Template for fine-tuning on custom retail store product datasets
+
+# Dataset directory paths (relative to YOLO run dir or absolute)
+path: ../datasets/visioncart-retail
+train: images/train
+val: images/val
+test: images/test  # Optional
+
+# Number of classes
+nc: 10
+
+# Class names corresponding to retail catalog detector_class labels
+names:
+  0: banana
+  1: apple
+  2: orange
+  3: bottle
+  4: cup
+  5: sandwich
+  6: donut
+  7: cake
+  8: bowl
+  9: pizza
+
