@@ -102,7 +102,7 @@ async def test_product_crud_lifecycle(auth_headers):
         assert resp_create.status_code == 201
         created = resp_create.json()
         prod_id = created["id"]
-        assert created["sku"] == "TEST-CRU-001"
+        assert created["sku"] == new_prod["sku"]
         assert created["stock"] == 40
 
         # 3. Duplicate SKU rejected

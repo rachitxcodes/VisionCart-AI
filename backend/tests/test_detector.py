@@ -116,3 +116,16 @@ async def test_detect_corrupt_image_error(cashier_headers):
         assert response.status_code == 400
         assert "Invalid image format" in response.json()["detail"]
 
+
+@pytest.mark.asyncio
+async def test_request_id_tracing_header(cashier_headers):
+    """Verify that every response carries an X-Request-ID header for structured tracing."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.get("/health")
+        assert resp.status_code == 200
+        assert "x-request-id" in resp.headers or "X-Request-ID" in resp.headers
+        custom_id = "test-custom-trace-id-123"
+        resp_custom = await client.get("/health", headers={"X-Request-ID": custom_id})
+        assert resp_custom.headers.get("x-request-id") == custom_id or resp_custom.headers.get("X-Request-ID") == custom_id
+

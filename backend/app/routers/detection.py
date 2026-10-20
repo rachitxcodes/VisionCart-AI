@@ -1,10 +1,10 @@
-from typing import Optional
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.dependencies import require_cashier_or_admin
+from app.core.limiter import limiter
 from app.models.user import User
 from app.schemas.detector import DetectionResponse, Base64FrameRequest
 from app.services.detector_service import (
@@ -18,7 +18,9 @@ router = APIRouter(prefix="/api/detection", tags=["Computer Vision Detection"])
 
 
 @router.post("/detect", response_model=DetectionResponse)
+@limiter.limit("120/minute")
 async def detect_products_from_file(
+    request: Request,
     file: UploadFile = File(...),
     current_user: User = Depends(require_cashier_or_admin),
     db: AsyncSession = Depends(get_db),
@@ -55,7 +57,9 @@ async def detect_products_from_file(
 
 
 @router.post("/detect-base64", response_model=DetectionResponse)
+@limiter.limit("240/minute")
 async def detect_products_from_base64(
+    request: Request,
     payload: Base64FrameRequest,
     current_user: User = Depends(require_cashier_or_admin),
     db: AsyncSession = Depends(get_db),

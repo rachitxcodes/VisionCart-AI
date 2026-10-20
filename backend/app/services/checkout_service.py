@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 from typing import Dict, List, Optional
 from sqlalchemy import select
@@ -5,11 +6,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from fastapi import HTTPException, status
 
+from app.core.database import is_sqlite
 from app.models.product import Product, StockAdjustment
 from app.models.invoice import Invoice, InvoiceItem
 from app.models.idempotency import IdempotencyRecord
 from app.schemas.invoice import CheckoutRequest
 from app.services.cart_service import cart_manager
+
+_sqlite_lock = asyncio.Lock()
 
 
 class CheckoutService:
@@ -49,6 +53,18 @@ class CheckoutService:
 
     @classmethod
     async def process_checkout(
+        cls,
+        db: AsyncSession,
+        checkout_req: CheckoutRequest,
+        cashier_id: int,
+    ) -> Invoice:
+        if is_sqlite:
+            async with _sqlite_lock:
+                return await cls._do_process_checkout(db, checkout_req, cashier_id)
+        return await cls._do_process_checkout(db, checkout_req, cashier_id)
+
+    @classmethod
+    async def _do_process_checkout(
         cls,
         db: AsyncSession,
         checkout_req: CheckoutRequest,

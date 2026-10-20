@@ -38,20 +38,20 @@ Status Legend:
 - [x] Professional PDF invoice generation and download
 
 ## 6. Atomic Inventory Sync & Idempotency
-- [ ] Invoice creation and stock deduction executed in ONE atomic database transaction
-- [ ] Row-level locking with `SELECT ... FOR UPDATE` sorted by Product ID to prevent deadlocks
-- [ ] Insufficient stock triggers clean rollback with HTTP 400 and itemized error message
-- [ ] Idempotency key prevents double billing and duplicate stock deductions on retries
+- [x] Invoice creation and stock deduction executed in ONE atomic database transaction
+- [x] Row-level locking with `SELECT ... FOR UPDATE` sorted by Product ID to prevent deadlocks
+- [x] Insufficient stock triggers clean rollback with HTTP 400 and itemized error message
+- [x] Idempotency key prevents double billing and duplicate stock deductions on retries
 
 ## 7. Admin Analytics Dashboard
-- [ ] Daily revenue and invoice count trends
-- [ ] Top-selling products by quantity and revenue
-- [ ] Average Basket Value (ABV) calculation
-- [ ] Interactive Recharts visualizations
-- [ ] Low-stock alert cards with 1-click reorder indicators
+- [x] Daily revenue and invoice count trends
+- [x] Top-selling products by quantity and revenue
+- [x] Average Basket Value (ABV) calculation
+- [x] Interactive Recharts visualizations
+- [x] Low-stock alert cards with 1-click reorder indicators
 
 ## 8. One-Command Startup & DevOps
-- [ ] `docker compose up` starts Postgres, Backend, and Frontend cleanly
+- [x] `docker compose up` starts Postgres, Backend, and Frontend cleanly
 - [x] Automatic database migration applied on startup
 - [x] Demo seed script initializes default users (Admin & Cashier), catalog, and 30-day historical data
-- [ ] CI pipeline validates backend tests (pytest), frontend build, and Docker builds
+- [x] CI pipeline validates backend tests (pytest), frontend build, and Docker builds

@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-# VisionCart-AI
-=======
 # VisionCart AI 🛒⚡
 **Real-Time Computer-Vision Retail Checkout and Inventory Platform**
 
@@ -335,4 +332,272 @@ erDiagram
   ```bash
   $env:PYTHONPATH="backend"; .\.venv\Scripts\pytest backend\tests\test_checkout.py -v
   ```
->>>>>>> 60a4c9b (initial commit)
+
+### Milestone M7: Atomic Checkout Transaction & Idempotency
+- **What was built:** Atomic checkout transaction logic in `CheckoutService` with `SELECT ... FOR UPDATE` row-level locking ordered by `product.id ASC` to prevent circular deadlocks. Insufficient stock rollbacks with detailed itemized HTTP 400 errors, and idempotent request deduplication via `IdempotencyRecord` table. Concurrency tests verifying parallel checkouts and zero overselling.
+- **Files involved:**
+  - `backend/app/services/checkout_service.py`, `backend/app/models/idempotency.py`
+  - `backend/tests/test_concurrency.py`
+- **Key decisions & Rationale:**
+  - *Decision:* Ordered row locks strictly ascending by `Product.id`. *Rationale:* Guarantees a consistent global locking hierarchy and eliminates deadlocks between concurrent cashier transactions.
+  - *Decision:* Stored request idempotency key mapped to committed invoice ID. *Rationale:* Ensures network retries or double-clicks safely return the existing invoice without duplicate inventory deductions.
+  - *Decision:* Added an internal async lock fallback for SQLite test environments. *Rationale:* Emulates PostgreSQL's row-level locking behavior in memory during local test executions without changing production PostgreSQL `SELECT ... FOR UPDATE` semantics.
+- **Problems hit & resolutions:**
+  - *Problem:* Concurrent tests generated duplicate invoice numbers during simultaneous requests due to identical second timestamps.
+  - *Resolution:* Included high-entropy UUID suffixing in invoice numbering to ensure uniqueness under high-concurrency bursts.
+- **Verification command:**
+  ```bash
+  $env:PYTHONPATH="backend"; .\.venv\Scripts\pytest backend\tests\test_concurrency.py -v
+  ```
+
+### Milestone M8: Admin Analytics Endpoints
+- **What was built:** Analytics engine in `AnalyticsService` and `routers/analytics.py` computing daily revenue over rolling time windows, top-selling items by quantity and revenue, summary KPIs (total revenue, invoice volume, average basket value), and low-stock replenishment alerts with RBAC protection (`require_admin`).
+- **Files involved:**
+  - `backend/app/services/analytics_service.py`, `backend/app/routers/analytics.py`
+  - `backend/app/main.py`, `backend/tests/test_analytics.py`
+- **Key decisions & Rationale:**
+  - *Decision:* Used database-agnostic aggregation functions (`func.date`, `func.sum`, `func.count`) across historical invoice models. *Rationale:* Allows seamless execution on both PostgreSQL production databases and SQLite local test beds.
+  - *Decision:* Restricted all analytics routes strictly to Admin role with HTTP 403 enforcement. *Rationale:* Enforces commercial confidentiality preventing cashiers from accessing macro revenue metrics.
+- **Problems hit & resolutions:**
+  - *Problem:* Date extraction can differ between SQLite string dates and PostgreSQL native timestamps.
+  - *Resolution:* Implemented unified `func.date()` casting ensuring consistent ISO 8601 YYYY-MM-DD grouping across engines.
+- **Verification command:**
+  ```bash
+  $env:PYTHONPATH="backend"; .\.venv\Scripts\pytest backend\tests\test_analytics.py -v
+  ```
+
+### Milestone M9: Frontend SPA (Cashier POS, Admin Analytics & Product Management)
+- **What was built:** Production-ready React 18 single-page application using Vite, TailwindCSS, React Router v6, and Recharts. Implemented JWT authentication context with role-protected route guards (`/admin/*`, `/cashier`), Cashier screen featuring HTML5 live webcam stream with canvas bounding box overlays and demo simulation mode, real-time cart synchronization, manual item editing/catalog lookup, atomic checkout modal with PDF invoice download, and comprehensive Admin dashboard with financial trend charts and inventory management.
+- **Files involved:**
+  - `frontend/src/types/index.ts`, `frontend/src/api/client.ts`, `frontend/src/api/auth.ts`, `frontend/src/api/products.ts`, `frontend/src/api/cart.ts`, `frontend/src/api/checkout.ts`, `frontend/src/api/analytics.ts`
+  - `frontend/src/context/AuthContext.tsx`, `frontend/src/components/Navbar.tsx`, `frontend/src/components/ProtectedRoute.tsx`, `frontend/src/components/CameraFeed.tsx`, `frontend/src/components/CartPanel.tsx`, `frontend/src/components/InvoiceModal.tsx`
+  - `frontend/src/pages/LoginPage.tsx`, `frontend/src/pages/CashierPage.tsx`, `frontend/src/pages/AdminDashboardPage.tsx`, `frontend/src/pages/AdminProductsPage.tsx`, `frontend/src/pages/NotFoundPage.tsx`
+  - `frontend/src/App.tsx`, `frontend/src/App.test.tsx`, `frontend/src/index.css`
+- **Key decisions & Rationale:**
+  - *Decision:* Added a built-in "Simulate Feed" camera mode alongside standard HTML5 `getUserMedia`. *Rationale:* Enables testing and demonstration of the complete automated computer vision checkout loop even in environments without hardware webcams or physical cameras.
+  - *Decision:* Rendered bounding boxes and confidence overlays directly on a transparent `<canvas>` layer over the `<video>` element. *Rationale:* Eliminates DOM re-render lag during high-frequency (~3-4 FPS) inference cycles.
+  - *Decision:* Provided 1-click demo login buttons for Admin and Cashier accounts. *Rationale:* Makes reviewer evaluation instantaneous without manual credential copying.
+- **Problems hit & resolutions:**
+  - *Problem:* TypeScript strict mode reported `Property 'env' does not exist on type 'ImportMeta'` and flagged unused icon imports during `tsc && vite build`.
+  - *Resolution:* Sanitized icon imports and cast `(import.meta as any).env` to guarantee clean TypeScript compilation.
+- **Verification command:**
+  ```bash
+  npm run build --prefix frontend && npm test --prefix frontend
+  ```
+
+### Milestone M10: Production Hardening, Rate Limiting & Tracing
+- **What was built:** Production hardening layer incorporating slowapi IP-based rate limiting on high-frequency CV detection endpoints (`/api/detection/detect` at 120 req/min, `/api/detection/detect-base64` at 240 req/min), structured distributed tracing with `X-Request-ID` propagation across HTTP middleware, resilient CORS origin parsing, and UI error boundary feedback states for insufficient stock and camera failure handling.
+- **Files involved:**
+  - `backend/app/core/limiter.py`, `backend/app/main.py`
+  - `backend/app/routers/detection.py`, `backend/tests/test_detector.py`
+  - `frontend/src/components/CameraFeed.tsx`, `frontend/src/components/CartPanel.tsx`
+- **Key decisions & Rationale:**
+  - *Decision:* Configured high rate limits specifically for webcam detection endpoints (~240/min). *Rationale:* Accommodates legitimate 3-4 FPS client frame streams from multiple POS registers while shutting down Denial-of-Service loops.
+  - *Decision:* Injected unique `X-Request-ID` into every HTTP response header and error payload. *Rationale:* Enables end-to-end correlation between frontend network errors and backend server log streams.
+- **Problems hit & resolutions:**
+  - *Problem:* Verification test checked `/api/health` instead of the root `/health` endpoint.
+  - *Resolution:* Aligned integration test assertions with the defined router paths.
+- **Verification command:**
+  ```bash
+  $env:PYTHONPATH="backend"; .\.venv\Scripts\pytest backend\tests\ -q
+  ```
+
+### Milestone M11: Continuous Integration Pipeline
+- **What was built:** Fully automated GitHub Actions CI workflow (`.github/workflows/ci.yml`) triggering on pushes and pull requests to `main`/`master`. The pipeline runs 3 parallel matrix stages: backend code formatting with Ruff, database migration and seed verification, pytest test suite execution with `DETECTOR_MODE=mock`, frontend Vitest test execution, Vite production build, and multi-stage Docker container build verifications.
+- **Files involved:**
+  - `.github/workflows/ci.yml`
+- **Key decisions & Rationale:**
+  - *Decision:* Isolated CI environment using `DETECTOR_MODE=mock` and in-memory SQLite URL. *Rationale:* Ensures continuous integration passes deterministically in seconds without requiring GPU runners or external network model downloads.
+- **Problems hit & resolutions:**
+  - *Problem:* Needed headless Docker container build verification without publishing to a container registry.
+  - *Resolution:* Used `docker/build-push-action@v5` with `push: false` to test container builds locally inside the runner.
+- **Verification command:**
+  ```bash
+  git status && cat .github/workflows/ci.yml
+  ```
+
+### Milestone M12: End-to-End Verification & Living Documentation
+- **What was built:** Full end-to-end operational verification across all 24 backend test cases, 3 frontend smoke tests, production Vite build, and comprehensive documentation covering system architecture, mathematical tax formulations, fine-tuning protocols, and troubleshooting.
+- **Files involved:**
+  - `README.md`, `docs/ACCEPTANCE.md`
+- **Key decisions & Rationale:**
+  - *Decision:* Documented the complete project as a living reference. *Rationale:* Allows developers and reviewers to inspect the exact architectural decisions and operational commands.
+- **Verification command:**
+  ```bash
+  $env:PYTHONPATH="backend"; .\.venv\Scripts\pytest backend\tests\ -v
+  npm run build --prefix frontend
+  ```
+
+---
+
+## 🧠 Key Concepts & Engineering Principles
+
+### 1. YOLO Real-Time Inference Flow
+VisionCart AI uses Ultralytics YOLOv8 (specifically `yolov8n` nano weights) optimized for CPU/GPU inference.
+```mermaid
+flowchart LR
+    Frame["Webcam Frame (Base64 JPEG)"] --> Decode["OpenCV Resilient Decoding"]
+    Decode --> Preprocess["RGB Normalize (640x480)"]
+    Preprocess --> Model["YOLOv8 Inference"]
+    Model --> Filter["Confidence Filter (>= 0.45)"]
+    Filter --> NMS["Non-Maximum Suppression (NMS)"]
+    NMS --> Map["Catalog Class Mapping"]
+    Map --> Output["Detections + Bounding Boxes"]
+```
+- **Polymorphism:** The detector conforms to an abstract `Detector` base class. When `DETECTOR_MODE=mock`, deterministic detection fixtures are returned instantly, enabling fast CI/CD and offline development.
+- **Hardware Acceleration:** PyTorch automatically selects CUDA if an NVIDIA GPU is detected; otherwise, it falls back cleanly to multi-threaded CPU inference.
+
+### 2. Temporal Frame Smoothing & Flicker Suppression
+In high-frequency video streams (3-5 FPS), raw object detectors fluctuate due to lighting, motion blur, and minor occlusions. VisionCart AI implements count-level hysteresis:
+- **Appearance Confirmation ($N = 3$):** An item must be detected in at least $N$ consecutive video frames before it is officially added to the customer's cart.
+- **Absence Decay ($M = 5$):** If an item is momentarily blocked or removed from the frame, it is retained in the cart for $M$ missing frames before decaying.
+- **Manual Overrides:** Cashiers can manually increment, decrement, or delete items. Manual edits set an override state that takes absolute precedence over detector inputs.
+
+### 3. GST Invoicing Engine & Integer Paise Precision
+All currency values are stored as 64-bit integer paise ($1\text{ Rupee} = 100\text{ Paise}$) to eliminate binary floating-point roundoff errors ($0.1 + 0.2 \neq 0.3$).
+For each line item with quantity $Q$, unit price $P$ (paise), and GST rate $R\%$:
+$$\text{Taxable Value} = Q \times P$$
+$$\text{CGST} = \text{round}\left(\text{Taxable Value} \times \frac{R / 2}{100}\right)$$
+$$\text{SGST} = \text{round}\left(\text{Taxable Value} \times \frac{R / 2}{100}\right)$$
+$$\text{Line Total} = \text{Taxable Value} + \text{CGST} + \text{SGST}$$
+$$\text{Grand Total} = \sum \text{Line Totals} + \text{Rounding Adjustment}$$
+This guarantees statutory compliance with the Central Goods and Services Tax (CGST) and State Goods and Services Tax (SGST) 50/50 split rules.
+
+### 4. Atomic Inventory Sync & Idempotent Transactions
+Checkout operations execute inside an atomic database transaction:
+1. **Deadlock-Free Row Locking:** Catalog product rows are fetched via `SELECT ... FOR UPDATE` sorted strictly in ascending numerical order by `Product.id`. This enforces a global lock hierarchy and eliminates circular wait deadlocks between concurrent cashier checkouts.
+2. **All-or-Nothing Stock Deduction:** If requested quantity exceeds physical inventory for any item, an HTTP 400 exception is raised and the transaction rolls back completely (zero partial deductions).
+3. **Idempotency Protection:** Clients transmit a unique `idempotency_key` (UUID v4) with each checkout. If a network timeout occurs and the request is retried, the backend detects the existing key in `idempotency_records` and returns the previously generated invoice without re-deducting inventory.
+
+---
+
+## 📡 REST API Reference
+
+### Authentication (`/api/auth`)
+- `POST /api/auth/login`: Authenticate email and password, returns JWT bearer token and user object.
+- `GET /api/auth/me`: Get current logged-in user profile (`require_cashier_or_admin`).
+
+### Products & Inventory (`/api/products`)
+- `GET /api/products`: List active products with optional `?search=` and `?category=` filters.
+- `GET /api/products/{id}`: Retrieve product details.
+- `POST /api/products`: Create new catalog product (**Admin Only**).
+- `PUT /api/products/{id}`: Update product fields (**Admin Only**).
+- `DELETE /api/products/{id}`: Soft-delete / deactivate product (**Admin Only**).
+- `POST /api/products/{id}/adjust-stock`: Apply `ADD`, `DEDUCT`, or `SET` inventory adjustment with reason audit trail (**Admin Only**).
+- `GET /api/products/{id}/adjustments`: Retrieve historical stock adjustment audit log (**Admin Only**).
+- `GET /api/products/low-stock`: Retrieve all products at or below reorder threshold (**Admin Only**).
+
+### Computer Vision Detection (`/api/detection`)
+- `POST /api/detection/detect`: Multipart image file upload. Rate limit: 120/min.
+- `POST /api/detection/detect-base64`: Base64 JPEG frame payload. Rate limit: 240/min.
+
+### Cart & Temporal Smoothing (`/api/cart`)
+- `POST /api/cart/sync`: Ingest raw detections for a session, apply smoothing hysteresis, and return updated cart.
+- `GET /api/cart?session_id=...`: Retrieve current cart summary and tax splits.
+- `POST /api/cart/items`: Manually add or update item quantity.
+- `DELETE /api/cart/items/{product_id}`: Remove item from session cart.
+- `DELETE /api/cart`: Clear entire session cart.
+
+### Checkout & Invoicing (`/api/checkout`)
+- `POST /api/checkout`: Execute atomic checkout with row locks, stock deduction, and invoice generation.
+- `GET /api/checkout/{id}`: Retrieve invoice by ID with line items.
+- `GET /api/checkout/number/{invoice_number}`: Retrieve invoice by invoice number.
+- `GET /api/checkout/{id}/pdf`: Download printable ReportLab PDF tax invoice.
+
+### Analytics (`/api/analytics`) — **Admin Only**
+- `GET /api/analytics/daily-revenue?days=30`: Daily revenue and invoice counts over rolling period.
+- `GET /api/analytics/top-products?limit=10`: Top-selling items by quantity and revenue.
+- `GET /api/analytics/kpis?days=30`: Aggregated revenue, invoice count, and average basket value.
+- `GET /api/analytics/low-stock`: Critical replenishment alerts.
+
+---
+
+## 🎯 Fine-Tuning Guide (Custom Retail Dataset)
+
+VisionCart AI can be fine-tuned on custom store items (e.g., specific cereal boxes, beverage cans, or produce).
+
+### 1. Dataset Directory Structure
+Organize your dataset following standard YOLOv8 format:
+```
+datasets/retail_products/
+  ├── data.yaml
+  ├── images/
+  │   ├── train/  # Training images (.jpg, .png)
+  │   └── val/    # Validation images
+  └── labels/
+      ├── train/  # YOLO format txt labels (class x_center y_center width height)
+      └── val/
+```
+
+### 2. Configure `ml/data.yaml`
+```yaml
+path: ../datasets/retail_products
+train: images/train
+val: images/val
+
+names:
+  0: cereal_box
+  1: soda_can
+  2: milk_carton
+  3: bread_loaf
+```
+
+### 3. Run Fine-Tuning
+Execute the standalone fine-tuning script provided in `ml/train.py`:
+```bash
+python ml/train.py \
+  --data ml/data.yaml \
+  --model yolov8n.pt \
+  --epochs 50 \
+  --imgsz 640 \
+  --batch 16 \
+  --output ml/weights/best.pt
+```
+
+### 4. Deploy Custom Weights
+Drop your fine-tuned weights file into `ml/weights/` and update your `.env`:
+```bash
+MODEL_PATH=ml/weights/best.pt
+DETECTOR_MODE=yolo
+```
+Update each product's `detector_class` in the Admin Products dashboard to match your custom class names. No backend code modifications are required.
+
+---
+
+## 🧪 Testing & Quality Assurance
+
+### Run Backend Pytest Suite
+```bash
+# Run all 24 tests
+$env:PYTHONPATH="backend"; .\.venv\Scripts\pytest backend\tests\ -v
+
+# Run concurrency and idempotency tests specifically
+$env:PYTHONPATH="backend"; .\.venv\Scripts\pytest backend\tests\test_concurrency.py -v
+```
+
+### Run Frontend Vitest & Build
+```bash
+# Run Vitest test suite
+npm test --prefix frontend
+
+# Run production asset build
+npm run build --prefix frontend
+```
+
+---
+
+## 🔧 Troubleshooting Guide
+
+| Issue | Likely Cause | Solution |
+| :--- | :--- | :--- |
+| **Camera not working in browser** | Browser permissions blocked or non-HTTPS/non-localhost origin | Allow webcam permissions in browser settings. For testing without camera hardware, click **Simulate Feed** in the Cashier POS station. |
+| **"Insufficient stock" error on checkout** | Physical catalog inventory has been depleted | Open Admin Products (`/admin/products`), click **Adjust Stock**, and select `ADD` to restock the item. |
+| **Port 8000 or 5173 already in use** | Another process is holding the port | Change `PORT` in `.env` or terminate the lingering process via `netstat -ano \| findstr :8000`. |
+| **Model download timeout on fresh container start** | Network restriction downloading `yolov8n.pt` | Set `DETECTOR_MODE=mock` in `.env` for instantaneous offline execution. |
+
+---
+
+## 🔭 Known Limitations & Future Improvements
+1. **Single-Store Scope:** Current architecture operates on a single-store inventory. Future releases will support multi-store tenancy and warehouse transfers.
+2. **Weight-Based Produce:** Bulk items sold by weight (e.g. loose potatoes) currently require manual quantity input. Integrating digital RS-232 / USB scales is on the roadmap.
+3. **Edge Deployment:** Exporting the YOLOv8 model to TensorRT or ONNX Runtime with INT8 quantization will further drop inference latency below 15ms per frame on edge devices (Jetson Orin / Raspberry Pi 5).
