@@ -1,5 +1,5 @@
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class BoundingBox(BaseModel):
@@ -25,8 +25,23 @@ class DetectionResponse(BaseModel):
     frame_height: int
     inference_time_ms: float
     detector_mode: str
+    count: Optional[int] = None
+
+    @model_validator(mode="after")
+    def populate_count(self):
+        if self.count is None:
+            self.count = len(self.detections)
+        return self
 
 
 class Base64FrameRequest(BaseModel):
-    image: str = Field(..., description="Base64 encoded JPEG/PNG frame, with or without data:image/jpeg;base64, prefix")
+    image: Optional[str] = Field(None, description="Base64 encoded JPEG/PNG frame, with or without data:image/jpeg;base64, prefix")
+    image_base64: Optional[str] = Field(None, description="Alternative field name for image base64")
 
+    @model_validator(mode="after")
+    def validate_image_present(self):
+        if not self.image and not self.image_base64:
+            raise ValueError("Field 'image' or 'image_base64' is required.")
+        if not self.image and self.image_base64:
+            self.image = self.image_base64
+        return self

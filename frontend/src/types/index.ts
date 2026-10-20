@@ -82,6 +82,7 @@ export interface CartLineItem {
   cgst_paise: number;
   sgst_paise: number;
   line_total_paise: number;
+  available_stock?: number;
 }
 
 export interface CartSummary {
@@ -93,6 +94,10 @@ export interface CartSummary {
   rounding_paise: number;
   grand_total_paise: number;
   total_items_count: number;
+  // Aliases for compatibility
+  cgst_paise?: number;
+  sgst_paise?: number;
+  total_paise?: number;
 }
 
 export interface InvoiceItem {

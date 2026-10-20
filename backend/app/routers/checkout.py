@@ -10,6 +10,7 @@ from app.services.checkout_service import CheckoutService
 from app.services.pdf_service import generate_invoice_pdf
 
 router = APIRouter(prefix="/api/checkout", tags=["Checkout & Invoicing"])
+invoices_router = APIRouter(prefix="/api/invoices", tags=["Invoices"])
 
 
 @router.post("", response_model=InvoiceResponse, status_code=status.HTTP_201_CREATED)
@@ -27,6 +28,7 @@ async def process_checkout(
 
 
 @router.get("/invoices", response_model=List[InvoiceResponse])
+@invoices_router.get("", response_model=List[InvoiceResponse])
 async def list_invoices(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
@@ -38,6 +40,8 @@ async def list_invoices(
 
 
 @router.get("/invoices/{invoice_id}", response_model=InvoiceResponse)
+@router.get("/{invoice_id}", response_model=InvoiceResponse)
+@invoices_router.get("/{invoice_id}", response_model=InvoiceResponse)
 async def get_invoice(
     invoice_id: int,
     user: User = Depends(require_cashier_or_admin),
@@ -54,6 +58,8 @@ async def get_invoice(
 
 
 @router.get("/invoices/{invoice_id}/pdf")
+@router.get("/{invoice_id}/pdf")
+@invoices_router.get("/{invoice_id}/pdf")
 async def download_invoice_pdf(
     invoice_id: int,
     user: User = Depends(require_cashier_or_admin),
@@ -76,4 +82,3 @@ async def download_invoice_pdf(
             "Content-Disposition": f'inline; filename="{filename}"',
         },
     )
-

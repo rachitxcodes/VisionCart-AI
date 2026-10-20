@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { productsApi } from '../api/products';
 import { Product, ProductCreate, ProductUpdate, StockAdjustmentRequest } from '../types';
 import {
@@ -9,6 +10,7 @@ import {
   Sliders,
   X,
   RefreshCw,
+  HelpCircle,
 } from 'lucide-react';
 
 export const AdminProductsPage: React.FC = () => {
@@ -192,7 +194,16 @@ export const AdminProductsPage: React.FC = () => {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">Product Catalog & Inventory</h1>
+          <div className="flex items-center space-x-2">
+            <h1 className="text-2xl font-bold tracking-tight text-white">Product Catalog & Inventory</h1>
+            <Link
+              to="/guide#guide-6"
+              title="View Product & Inventory Guide"
+              className="p-1 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-slate-800 transition-colors"
+            >
+              <HelpCircle className="w-5 h-5" />
+            </Link>
+          </div>
           <p className="text-xs text-slate-400 mt-1">
             Manage SKUs, prices, GST tax rates, inventory levels, and YOLO detector class mappings
           </p>

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { CartSummary, Product } from '../types';
 import { productsApi } from '../api/products';
-import { ShoppingBag, Plus, Minus, Trash2, ArrowRight, AlertTriangle, RefreshCw, Sparkles } from 'lucide-react';
+import { ShoppingBag, Plus, Minus, Trash2, ArrowRight, AlertTriangle, RefreshCw, Sparkles, HelpCircle } from 'lucide-react';
 
 interface CartPanelProps {
   cart: CartSummary;
@@ -25,6 +26,7 @@ export const CartPanel: React.FC<CartPanelProps> = ({
   const [catalog, setCatalog] = useState<Product[]>([]);
   const [selectedProductId, setSelectedProductId] = useState<number | ''>('');
   const [isLoadingCatalog, setIsLoadingCatalog] = useState(false);
+  const [stockWarning, setStockWarning] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchCatalog = async () => {
@@ -41,12 +43,45 @@ export const CartPanel: React.FC<CartPanelProps> = ({
     fetchCatalog();
   }, []);
 
+  const getProductMaxStock = (productId: number): number => {
+    const prod = catalog.find((p) => p.id === productId);
+    if (prod) return prod.stock;
+    const item = cart.items.find((i) => i.product_id === productId);
+    if (item && item.available_stock !== undefined && item.available_stock !== null) {
+      return item.available_stock;
+    }
+    return 999;
+  };
+
   const handleManualAdd = () => {
     if (!selectedProductId) return;
+    const maxStock = getProductMaxStock(Number(selectedProductId));
+    const prod = catalog.find((p) => p.id === Number(selectedProductId));
     const existing = cart.items.find((i) => i.product_id === Number(selectedProductId));
     const newQty = existing ? existing.quantity + 1 : 1;
+
+    if (newQty > maxStock) {
+      setStockWarning(`Cannot add "${prod?.name || 'Item'}": Available stock limit of ${maxStock} units reached.`);
+      return;
+    }
+
+    setStockWarning(null);
     onUpdateQuantity(Number(selectedProductId), newQty);
     setSelectedProductId('');
+  };
+
+  const handleIncrement = (productId: number, currentQty: number) => {
+    const maxStock = getProductMaxStock(productId);
+    const prod = catalog.find((p) => p.id === productId);
+    const name = prod?.name || cart.items.find((i) => i.product_id === productId)?.product_name || 'Item';
+
+    if (currentQty + 1 > maxStock) {
+      setStockWarning(`Cannot exceed available stock for "${name}" (only ${maxStock} in stock).`);
+      return;
+    }
+
+    setStockWarning(null);
+    onUpdateQuantity(productId, currentQty + 1);
   };
 
   const formatRupees = (paise: number) => {
@@ -77,23 +112,35 @@ export const CartPanel: React.FC<CartPanelProps> = ({
           </div>
         </div>
 
-        {cart.items.length > 0 && (
-          <button
-            onClick={onClearCart}
-            disabled={isCheckingOut}
-            className="text-xs text-slate-400 hover:text-rose-400 flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-slate-800/60 hover:bg-rose-950/40 border border-slate-700/60 transition-colors disabled:opacity-50"
+        <div className="flex items-center space-x-2">
+          <Link
+            to="/guide#guide-4"
+            className="text-slate-400 hover:text-indigo-400 p-1 rounded-lg hover:bg-slate-800 transition-colors"
+            title="Cart Help Guide"
           >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span>Clear Cart</span>
-          </button>
-        )}
+            <HelpCircle className="w-4 h-4" />
+          </Link>
+          {cart.items.length > 0 && (
+            <button
+              onClick={onClearCart}
+              disabled={isCheckingOut}
+              className="text-xs text-slate-400 hover:text-rose-400 flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-slate-800/60 hover:bg-rose-950/40 border border-slate-700/60 transition-colors disabled:opacity-50"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Clear Cart</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Manual Product Add Bar */}
       <div className="p-3 bg-slate-950/40 border-b border-slate-800 flex items-center gap-2">
         <select
           value={selectedProductId}
-          onChange={(e) => setSelectedProductId(e.target.value ? Number(e.target.value) : '')}
+          onChange={(e) => {
+            setSelectedProductId(e.target.value ? Number(e.target.value) : '');
+            setStockWarning(null);
+          }}
           disabled={isLoadingCatalog || isCheckingOut}
           className="flex-1 bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500"
         >
@@ -114,6 +161,23 @@ export const CartPanel: React.FC<CartPanelProps> = ({
         </button>
       </div>
 
+      {/* Stock Limit Warning Banner */}
+      {stockWarning && (
+        <div className="mx-3 mt-3 p-2.5 bg-amber-950/80 border border-amber-800/80 rounded-xl text-xs text-amber-200 flex items-start space-x-2">
+          <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <span className="font-semibold block">Stock Limit Warning</span>
+            <span className="text-[11px] text-amber-300">{stockWarning}</span>
+          </div>
+          <button
+            onClick={() => setStockWarning(null)}
+            className="text-amber-400 hover:text-amber-200 text-xs px-1"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Cart Items List */}
       <div className="flex-1 overflow-y-auto p-3 space-y-2.5 divide-y divide-slate-800/50">
         {cart.items.length === 0 ? (
@@ -127,56 +191,72 @@ export const CartPanel: React.FC<CartPanelProps> = ({
             </p>
           </div>
         ) : (
-          cart.items.map((item) => (
-            <div
-              key={item.product_id}
-              className="pt-2.5 first:pt-0 flex items-center justify-between gap-3 text-xs"
-            >
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-slate-200 truncate">{item.product_name}</p>
-                <div className="flex items-center space-x-2 text-[11px] text-slate-400">
-                  <span className="font-mono text-slate-500">{item.product_sku}</span>
-                  <span>•</span>
-                  <span>{formatRupees(item.unit_price_paise)} ea</span>
-                  <span>•</span>
-                  <span className="text-indigo-400">GST {item.gst_rate}%</span>
+          cart.items.map((item) => {
+            const maxStock = getProductMaxStock(item.product_id);
+            const isAtMax = item.quantity >= maxStock;
+
+            return (
+              <div
+                key={item.product_id}
+                className="pt-2.5 first:pt-0 flex items-center justify-between gap-3 text-xs"
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-slate-200 truncate">{item.product_name}</p>
+                  <div className="flex items-center space-x-2 text-[11px] text-slate-400">
+                    <span className="font-mono text-slate-500">{item.product_sku || (item as any).sku}</span>
+                    <span>•</span>
+                    <span>{formatRupees(item.unit_price_paise)} ea</span>
+                    <span>•</span>
+                    <span className="text-indigo-400">GST {item.gst_rate}%</span>
+                  </div>
+                </div>
+
+                {/* Quantity Controls */}
+                <div className="flex items-center space-x-1.5 bg-slate-950 px-2 py-1 rounded-xl border border-slate-800">
+                  <button
+                    onClick={() => {
+                      setStockWarning(null);
+                      onUpdateQuantity(item.product_id, item.quantity - 1);
+                    }}
+                    disabled={isCheckingOut}
+                    className="w-6 h-6 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition-colors disabled:opacity-50"
+                  >
+                    <Minus className="w-3 h-3" />
+                  </button>
+                  <span className="w-7 text-center font-bold text-white text-xs">{item.quantity}</span>
+                  <button
+                    onClick={() => handleIncrement(item.product_id, item.quantity)}
+                    disabled={isCheckingOut || isAtMax}
+                    className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${
+                      isAtMax
+                        ? 'bg-slate-800/40 text-slate-600 cursor-not-allowed'
+                        : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                    }`}
+                    title={isAtMax ? `Max available stock reached (${maxStock})` : 'Increase quantity'}
+                  >
+                    <Plus className="w-3 h-3" />
+                  </button>
+                </div>
+
+                {/* Line Total & Remove */}
+                <div className="text-right flex items-center space-x-2">
+                  <span className="font-bold text-white text-xs whitespace-nowrap">
+                    {formatRupees(item.line_total_paise)}
+                  </span>
+                  <button
+                    onClick={() => {
+                      setStockWarning(null);
+                      onRemoveItem(item.product_id);
+                    }}
+                    disabled={isCheckingOut}
+                    className="text-slate-500 hover:text-rose-400 p-1 transition-colors disabled:opacity-50"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
-
-              {/* Quantity Controls */}
-              <div className="flex items-center space-x-1.5 bg-slate-950 px-2 py-1 rounded-xl border border-slate-800">
-                <button
-                  onClick={() => onUpdateQuantity(item.product_id, item.quantity - 1)}
-                  disabled={isCheckingOut}
-                  className="w-6 h-6 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition-colors disabled:opacity-50"
-                >
-                  <Minus className="w-3 h-3" />
-                </button>
-                <span className="w-7 text-center font-bold text-white text-xs">{item.quantity}</span>
-                <button
-                  onClick={() => onUpdateQuantity(item.product_id, item.quantity + 1)}
-                  disabled={isCheckingOut}
-                  className="w-6 h-6 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition-colors disabled:opacity-50"
-                >
-                  <Plus className="w-3 h-3" />
-                </button>
-              </div>
-
-              {/* Line Total & Remove */}
-              <div className="text-right flex items-center space-x-2">
-                <span className="font-bold text-white text-xs whitespace-nowrap">
-                  {formatRupees(item.line_total_paise)}
-                </span>
-                <button
-                  onClick={() => onRemoveItem(item.product_id)}
-                  disabled={isCheckingOut}
-                  className="text-slate-500 hover:text-rose-400 p-1 transition-colors disabled:opacity-50"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
@@ -199,11 +279,11 @@ export const CartPanel: React.FC<CartPanelProps> = ({
         </div>
         <div className="flex justify-between text-xs text-slate-400">
           <span>CGST (Central Tax)</span>
-          <span>{formatRupees(cart.cgst_total_paise)}</span>
+          <span>{formatRupees(cart.cgst_total_paise ?? cart.cgst_paise ?? 0)}</span>
         </div>
         <div className="flex justify-between text-xs text-slate-400">
           <span>SGST (State Tax)</span>
-          <span>{formatRupees(cart.sgst_total_paise)}</span>
+          <span>{formatRupees(cart.sgst_total_paise ?? cart.sgst_paise ?? 0)}</span>
         </div>
         {cart.rounding_paise !== 0 && (
           <div className="flex justify-between text-xs text-slate-400">
@@ -215,7 +295,7 @@ export const CartPanel: React.FC<CartPanelProps> = ({
         <div className="border-t border-slate-800 pt-2 flex justify-between items-baseline">
           <span className="text-sm font-bold text-white">Grand Total</span>
           <span className="text-xl font-extrabold text-emerald-400">
-            {formatRupees(cart.grand_total_paise)}
+            {formatRupees(cart.grand_total_paise ?? cart.total_paise ?? 0)}
           </span>
         </div>
 
@@ -241,4 +321,3 @@ export const CartPanel: React.FC<CartPanelProps> = ({
     </div>
   );
 };
-

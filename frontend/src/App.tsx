@@ -7,6 +7,7 @@ import { LoginPage } from './pages/LoginPage';
 import { CashierPage } from './pages/CashierPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { AdminProductsPage } from './pages/AdminProductsPage';
+import { GuideHubPage } from './pages/GuideHubPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 const RootRedirect: React.FC = () => {
@@ -65,6 +66,21 @@ export const AppContent: React.FC = () => {
               <Navbar />
               <main className="flex-1">
                 <AdminProductsPage />
+              </main>
+            </div>
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Guide Hub (Accessible to both Cashier and Admin) */}
+      <Route
+        path="/guide"
+        element={
+          <ProtectedRoute allowedRoles={['ADMIN', 'CASHIER']}>
+            <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+              <Navbar />
+              <main className="flex-1">
+                <GuideHubPage />
               </main>
             </div>
           </ProtectedRoute>

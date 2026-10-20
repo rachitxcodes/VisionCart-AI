@@ -69,9 +69,5 @@ app.include_router(products.router)
 app.include_router(detection.router)
 app.include_router(cart.router)
 app.include_router(checkout.router)
+app.include_router(checkout.invoices_router)
 app.include_router(analytics.router)
-
-
-
-
-

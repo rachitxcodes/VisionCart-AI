@@ -55,3 +55,12 @@ Status Legend:
 - [x] Automatic database migration applied on startup
 - [x] Demo seed script initializes default users (Admin & Cashier), catalog, and 30-day historical data
 - [x] CI pipeline validates backend tests (pytest), frontend build, and Docker builds
+
+## 9. Help Center / Guide Hub & QA Audit
+- [x] Guide Hub accessible at `/guide` with navbar link for both roles
+- [x] 6 feature highlight cards and 9 plain-language how-to guides
+- [x] Role-aware sorting (Cashier vs Admin perspective) and live search filtering
+- [x] FAQ accordion with 5 critical operational questions and troubleshooting steps
+- [x] Academic credits: GLA University, B.Tech CSE (AIML), 5th Semester Mini Project
+- [x] Contextual "?" help buttons linking directly to relevant guides from Cashier POS, Products, and Analytics Dashboard
+- [x] Comprehensive QA report recorded in `docs/QA_REPORT.md` (30 PASS, 0 FAIL, 1 UNVERIFIED due to Docker)

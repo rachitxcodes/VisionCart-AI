@@ -5,7 +5,7 @@ export const cartApi = {
   detectBase64: async (base64Image: string) => {
     const response = await api.post<{ detections: DetectionItem[]; count: number }>(
       '/api/detection/detect-base64',
-      { image_base64: base64Image }
+      { image: base64Image, image_base64: base64Image }
     );
     return response.data;
   },
@@ -14,6 +14,7 @@ export const cartApi = {
     const response = await api.post<CartSummary>('/api/cart/sync', {
       session_id: sessionId,
       detections,
+      detected_classes: detections.map((d) => d.class_name),
     });
     return response.data;
   },
@@ -52,4 +53,3 @@ export const cartApi = {
     return response.data;
   },
 };
-

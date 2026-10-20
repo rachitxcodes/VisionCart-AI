@@ -77,6 +77,7 @@ def calculate_line_item(product: Product, quantity: int, is_manual: bool = False
         product_id=product.id,
         product_name=product.name,
         sku=product.sku,
+        product_sku=product.sku,
         unit_price_paise=product.price_paise,
         gst_rate=product.gst_rate,
         quantity=quantity,
@@ -85,6 +86,7 @@ def calculate_line_item(product: Product, quantity: int, is_manual: bool = False
         sgst_paise=sgst,
         line_total_paise=line_total,
         is_manual=is_manual,
+        available_stock=product.stock,
     )
 
 
@@ -183,12 +185,16 @@ class CartManager:
         return CartSummarySchema(
             items=items,
             total_items=total_items,
+            total_items_count=total_items,
             subtotal_paise=subtotal,
             cgst_paise=cgst,
+            cgst_total_paise=cgst,
             sgst_paise=sgst,
+            sgst_total_paise=sgst,
+            rounding_paise=0,
             total_paise=total,
+            grand_total_paise=total,
         )
 
 
 cart_manager = CartManager()
-

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { analyticsApi } from '../api/analytics';
 import { productsApi } from '../api/products';
 import { DailyRevenueEntry, TopProductEntry, SummaryKPIs, LowStockAlert } from '../types';
@@ -20,6 +21,7 @@ import {
   AlertTriangle,
   RefreshCw,
   Plus,
+  HelpCircle,
 } from 'lucide-react';
 
 export const AdminDashboardPage: React.FC = () => {
@@ -132,6 +134,14 @@ export const AdminDashboardPage: React.FC = () => {
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
+
+          <Link
+            to="/guide#guide-9"
+            className="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-slate-400 hover:text-indigo-400 transition-colors"
+            title="Analytics Dashboard Help Guide"
+          >
+            <HelpCircle className="w-4 h-4" />
+          </Link>
         </div>
       </div>
 

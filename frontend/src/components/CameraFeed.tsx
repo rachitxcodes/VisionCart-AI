@@ -1,7 +1,8 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { cartApi } from '../api/cart';
 import { DetectionItem } from '../types';
-import { Camera, CameraOff, Video, AlertCircle, RefreshCw } from 'lucide-react';
+import { Camera, CameraOff, Video, AlertCircle, RefreshCw, HelpCircle } from 'lucide-react';
 
 interface CameraFeedProps {
   onDetections: (detections: DetectionItem[]) => void;
@@ -33,7 +34,7 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
     setIsCameraActive(false);
   }, []);
 
-  // Start live webcam
+  // Start live webcam with granular error handling
   const startCamera = async () => {
     setCameraError(null);
     try {
@@ -52,8 +53,18 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
       setIsCameraActive(true);
       setIsMockStreaming(false);
     } catch (err: any) {
-      console.warn('Camera access failed, falling back to mock mode available:', err);
-      setCameraError(err.message || 'Could not access webcam. You can use Simulation mode.');
+      console.warn('Camera access failed:', err);
+      let errorMsg = 'Could not access webcam. You can use Simulation mode.';
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        errorMsg = 'Camera permission was denied. Please allow camera access in your browser or click Simulate Feed.';
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        errorMsg = 'No camera hardware found on this computer. Click Simulate Feed below to test live recognition.';
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        errorMsg = 'Camera is already in use by another program. Close other apps or use Simulate Feed.';
+      } else if (err.message) {
+        errorMsg = err.message;
+      }
+      setCameraError(errorMsg);
       setIsCameraActive(false);
     }
   };
@@ -177,7 +188,7 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
       const elapsed = Math.round(performance.now() - startTime);
 
       setLastInferenceTime(elapsed);
-      setDetectionCount(res.count);
+      setDetectionCount(res.count ?? res.detections?.length ?? 0);
       drawDetections(res.detections, width, height);
       onDetections(res.detections);
     } catch (err) {
@@ -228,6 +239,14 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
 
         {/* Camera Controls */}
         <div className="flex items-center space-x-2">
+          <Link
+            to="/guide#guide-2"
+            className="text-slate-400 hover:text-indigo-400 p-1 rounded-lg hover:bg-slate-800 transition-colors"
+            title="Camera Scanning Guide"
+          >
+            <HelpCircle className="w-4 h-4" />
+          </Link>
+
           {isCameraActive ? (
             <button
               onClick={stopCamera}
@@ -321,13 +340,30 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
           </div>
         )}
 
-        {/* Error Notification */}
+        {/* Error Notification with Help Link */}
         {cameraError && (
-          <div className="absolute bottom-3 inset-x-3 z-20 bg-rose-950/90 border border-rose-800/80 text-rose-200 text-xs p-3 rounded-xl flex items-start space-x-2 shadow-lg backdrop-blur-sm">
+          <div className="absolute bottom-3 inset-x-3 z-20 bg-rose-950/95 border border-rose-800 text-rose-200 text-xs p-3 rounded-xl flex items-start space-x-2.5 shadow-xl backdrop-blur-md">
             <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="font-semibold">Webcam Not Available</p>
-              <p className="text-rose-300 text-[11px]">{cameraError}</p>
+              <p className="font-semibold text-white">Camera Notice</p>
+              <p className="text-rose-200 text-[11px] mt-0.5 leading-relaxed">{cameraError}</p>
+              <div className="mt-2 flex items-center space-x-3">
+                <button
+                  onClick={() => {
+                    setCameraError(null);
+                    setIsMockStreaming(true);
+                  }}
+                  className="px-2.5 py-1 rounded bg-rose-900/60 hover:bg-rose-900 text-[11px] text-white font-medium transition-colors"
+                >
+                  Switch to Simulate Feed
+                </button>
+                <Link
+                  to="/guide#guide-3"
+                  className="text-[11px] text-rose-300 hover:text-white underline"
+                >
+                  Troubleshooting Guide →
+                </Link>
+              </div>
             </div>
           </div>
         )}
@@ -341,4 +377,3 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
     </div>
   );
 };
-

@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Any, List, Optional
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,22 +13,40 @@ router = APIRouter(prefix="/api/cart", tags=["Cart & Frame Smoothing"])
 
 
 class SyncDetectionsRequest(BaseModel):
-    detected_classes: List[str]
+    detected_classes: Optional[List[str]] = None
+    detections: Optional[List[Any]] = None
     session_id: Optional[str] = "default"
+
+    def get_classes(self) -> List[str]:
+        if self.detected_classes is not None:
+            return self.detected_classes
+        if self.detections is not None:
+            classes = []
+            for d in self.detections:
+                if isinstance(d, dict):
+                    name = d.get("class_name") or d.get("name")
+                    if name:
+                        classes.append(name)
+                elif hasattr(d, "class_name"):
+                    classes.append(d.class_name)
+            return classes
+        return []
 
 
 @router.post("/sync-frame", response_model=CartSummarySchema)
+@router.post("/sync", response_model=CartSummarySchema)
 async def sync_frame_detections(
     payload: SyncDetectionsRequest,
     current_user: User = Depends(require_cashier_or_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    """Feed detected classes from a camera frame into the smoother and retrieve the stabilized cart."""
-    session_id = f"user_{current_user.id}_{payload.session_id}"
+    """Feed detected classes or detection objects from a camera frame into the smoother and retrieve the stabilized cart."""
+    sess_id = payload.session_id or "default"
+    session_key = f"user_{current_user.id}_{sess_id}"
     return await cart_manager.sync_frame_detections(
         db=db,
-        session_id=session_id,
-        detected_classes=payload.detected_classes,
+        session_id=session_key,
+        detected_classes=payload.get_classes(),
     )
 
 
@@ -44,6 +62,7 @@ async def get_current_cart(
 
 
 @router.post("/item", response_model=CartSummarySchema)
+@router.post("/items", response_model=CartSummarySchema)
 async def update_cart_item(
     payload: ManualCartItemUpdate,
     session_id: str = Query("default"),
@@ -51,7 +70,8 @@ async def update_cart_item(
     db: AsyncSession = Depends(get_db),
 ):
     """Cashier manually updates an item's quantity or adds a non-detected catalog item."""
-    session_key = f"user_{current_user.id}_{session_id}"
+    sess_id = payload.session_id or session_id or "default"
+    session_key = f"user_{current_user.id}_{sess_id}"
     return await cart_manager.update_item_quantity(
         db=db,
         session_id=session_key,
@@ -61,6 +81,7 @@ async def update_cart_item(
 
 
 @router.delete("/item/{product_id}", response_model=CartSummarySchema)
+@router.delete("/items/{product_id}", response_model=CartSummarySchema)
 async def remove_cart_item(
     product_id: int,
     session_id: str = Query("default"),
@@ -78,6 +99,7 @@ async def remove_cart_item(
 
 
 @router.post("/clear")
+@router.delete("")
 async def clear_cart(
     session_id: str = Query("default"),
     current_user: User = Depends(require_cashier_or_admin),
@@ -86,4 +108,3 @@ async def clear_cart(
     session_key = f"user_{current_user.id}_{session_id}"
     cart_manager.clear_cart(session_id=session_key)
     return {"message": "Cart cleared successfully."}
-

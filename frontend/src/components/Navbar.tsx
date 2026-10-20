@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ShoppingCart, LayoutDashboard, Package, LogOut, ShieldCheck, User as UserIcon } from 'lucide-react';
+import { ShoppingCart, LayoutDashboard, Package, LogOut, ShieldCheck, User as UserIcon, BookOpen } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
   const { user, logout, isAdmin } = useAuth();
@@ -37,7 +37,7 @@ export const Navbar: React.FC = () => {
           </div>
 
           {/* Navigation Links */}
-          <nav className="flex items-center space-x-1 sm:space-x-4">
+          <nav className="flex items-center space-x-1 sm:space-x-3">
             <Link
               to="/cashier"
               className={`flex items-center space-x-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -77,6 +77,18 @@ export const Navbar: React.FC = () => {
                 </Link>
               </>
             )}
+
+            <Link
+              to="/guide"
+              className={`flex items-center space-x-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                isActive('/guide')
+                  ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/50'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-800'
+              }`}
+            >
+              <BookOpen className="w-4 h-4" />
+              <span>Guide Hub</span>
+            </Link>
           </nav>
 
           {/* User Profile & Logout */}
@@ -112,4 +124,3 @@ export const Navbar: React.FC = () => {
     </header>
   );
 };
-
