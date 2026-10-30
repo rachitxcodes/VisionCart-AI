@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import api from '../api/client';
 import { cartApi } from '../api/cart';
 import { DetectionItem } from '../types';
 import { Camera, CameraOff, Video, AlertCircle, RefreshCw, HelpCircle } from 'lucide-react';
@@ -16,13 +17,41 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
 
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [detectorError, setDetectorError] = useState<string | null>(null);
+  const [detectorMode, setDetectorMode] = useState<string>('real');
   const [isMockStreaming, setIsMockStreaming] = useState(false);
   const [lastInferenceTime, setLastInferenceTime] = useState<number | null>(null);
   const [detectionCount, setDetectionCount] = useState<number>(0);
   const streamRef = useRef<MediaStream | null>(null);
   const isInferringRef = useRef<boolean>(false);
 
-  // Stop camera media stream
+  // Fetch initial detector status from /health
+  useEffect(() => {
+    api.get('/health')
+      .then((res) => {
+        const mode = res.data?.detector || res.data?.detector_mode;
+        if (mode) setDetectorMode(mode);
+      })
+      .catch((err) => {
+        console.warn('Failed to fetch detector health:', err);
+      });
+  }, []);
+
+  // Clear detections and overlay immediately
+  const clearOverlay = useCallback(() => {
+    const canvas = overlayCanvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+    setDetectionCount(0);
+    setLastInferenceTime(null);
+    onDetections([]);
+  }, [onDetections]);
+
+  // Stop camera media stream and clear overlay immediately
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
@@ -32,11 +61,14 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
       videoRef.current.srcObject = null;
     }
     setIsCameraActive(false);
-  }, []);
+    clearOverlay();
+  }, [clearOverlay]);
 
   // Start live webcam with granular error handling
   const startCamera = async () => {
     setCameraError(null);
+    setDetectorError(null);
+    clearOverlay();
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('Webcam API is not supported in this browser.');
@@ -66,24 +98,39 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
       }
       setCameraError(errorMsg);
       setIsCameraActive(false);
+      clearOverlay();
     }
   };
 
-  // Draw bounding boxes on the overlay canvas
+  // Draw bounding boxes on the overlay canvas scaled to actual displayed video size
   const drawDetections = (
     detections: DetectionItem[],
-    width: number,
-    height: number
+    frameWidth: number,
+    frameHeight: number
   ) => {
     const canvas = overlayCanvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    ctx.clearRect(0, 0, width, height);
+    // Dynamically match internal resolution to client display size
+    const displayWidth = canvas.clientWidth || 640;
+    const displayHeight = canvas.clientHeight || 480;
+    if (canvas.width !== displayWidth || canvas.height !== displayHeight) {
+      canvas.width = displayWidth;
+      canvas.height = displayHeight;
+    }
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const scaleX = canvas.width / (frameWidth || 640);
+    const scaleY = canvas.height / (frameHeight || 480);
 
     detections.forEach((det) => {
-      const { x1, y1, x2, y2 } = det.box;
+      const x1 = det.box.x1 * scaleX;
+      const y1 = det.box.y1 * scaleY;
+      const x2 = det.box.x2 * scaleX;
+      const y2 = det.box.y2 * scaleY;
       const boxWidth = x2 - x1;
       const boxHeight = y2 - y1;
 
@@ -124,41 +171,43 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
     if (isInferringRef.current || isProcessingCart) return;
 
     let base64Image = '';
-    const width = 640;
-    const height = 480;
+    let inputWidth = 640;
+    let inputHeight = 480;
 
     if (isCameraActive && videoRef.current && videoRef.current.readyState === 4) {
       const canvas = canvasRef.current || document.createElement('canvas');
-      canvas.width = videoRef.current.videoWidth || width;
-      canvas.height = videoRef.current.videoHeight || height;
+      inputWidth = videoRef.current.videoWidth || 640;
+      inputHeight = videoRef.current.videoHeight || 480;
+      canvas.width = inputWidth;
+      canvas.height = inputHeight;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
       base64Image = canvas.toDataURL('image/jpeg', 0.8);
-    } else if (isMockStreaming) {
-      // Generate synthetic frame with mock items
+    } else if (isMockStreaming && !isCameraActive) {
+      // Generate synthetic frame ONLY when real camera is off
       const canvas = canvasRef.current || document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
+      canvas.width = inputWidth;
+      canvas.height = inputHeight;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
       // Dark background
       ctx.fillStyle = '#0f172a';
-      ctx.fillRect(0, 0, width, height);
+      ctx.fillRect(0, 0, inputWidth, inputHeight);
 
       // Draw grid
       ctx.strokeStyle = '#1e293b';
-      for (let i = 0; i < width; i += 40) {
+      for (let i = 0; i < inputWidth; i += 40) {
         ctx.beginPath();
         ctx.moveTo(i, 0);
-        ctx.lineTo(i, height);
+        ctx.lineTo(i, inputHeight);
         ctx.stroke();
       }
-      for (let i = 0; i < height; i += 40) {
+      for (let i = 0; i < inputHeight; i += 40) {
         ctx.beginPath();
         ctx.moveTo(0, i);
-        ctx.lineTo(width, i);
+        ctx.lineTo(inputWidth, i);
         ctx.stroke();
       }
 
@@ -187,16 +236,30 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
       const res = await cartApi.detectBase64(base64Image);
       const elapsed = Math.round(performance.now() - startTime);
 
+      // If user stopped feed while request was in-flight, discard results
+      if (!isCameraActive && !isMockStreaming) {
+        clearOverlay();
+        return;
+      }
+
+      setDetectorError(null);
+      const activeMode = (res as any).detector_mode;
+      if (activeMode) {
+        setDetectorMode(activeMode);
+      }
       setLastInferenceTime(elapsed);
       setDetectionCount(res.count ?? res.detections?.length ?? 0);
-      drawDetections(res.detections, width, height);
+      drawDetections(res.detections, inputWidth, inputHeight);
       onDetections(res.detections);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Detection request failed:', err);
+      const errMsg = err.response?.data?.detail || err.message || 'Detector communication error';
+      setDetectorError(errMsg);
+      clearOverlay();
     } finally {
       isInferringRef.current = false;
     }
-  }, [isCameraActive, isMockStreaming, isProcessingCart, onDetections]);
+  }, [isCameraActive, isMockStreaming, isProcessingCart, onDetections, clearOverlay]);
 
   // Periodic frame loop (~3.3 FPS = 300ms)
   useEffect(() => {
@@ -207,12 +270,13 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
     return () => clearInterval(interval);
   }, [isCameraActive, isMockStreaming, captureAndDetect]);
 
-  // Clean up media streams on unmount
+  // Clean up media streams and clear canvas on unmount
   useEffect(() => {
     return () => {
       stopCamera();
+      clearOverlay();
     };
-  }, [stopCamera]);
+  }, [stopCamera, clearOverlay]);
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl flex flex-col">
@@ -230,6 +294,22 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
             ></span>
           </div>
           <span className="font-semibold text-sm text-white">Live AI Vision Scanner</span>
+
+          {/* Active Detector Mode / Error Badge */}
+          {detectorError ? (
+            <span className="text-[10px] font-bold text-white bg-rose-600 px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse flex items-center space-x-1">
+              <span>DETECTOR ERROR</span>
+            </span>
+          ) : isMockStreaming || detectorMode === 'mock' ? (
+            <span className="text-[10px] font-bold text-amber-950 bg-amber-400 px-2 py-0.5 rounded-full uppercase tracking-wider">
+              MOCK
+            </span>
+          ) : (
+            <span className="text-[10px] font-bold text-emerald-950 bg-emerald-400 px-2 py-0.5 rounded-full uppercase tracking-wider">
+              REAL
+            </span>
+          )}
+
           {lastInferenceTime !== null && (
             <span className="text-[11px] font-mono text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
               {lastInferenceTime}ms | {detectionCount} items
@@ -268,6 +348,7 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
           <button
             onClick={() => {
               if (isCameraActive) stopCamera();
+              clearOverlay();
               setIsMockStreaming(!isMockStreaming);
             }}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors flex items-center space-x-1.5 ${
@@ -300,8 +381,6 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
         {/* Transparent Bounding Box Overlay Canvas */}
         <canvas
           ref={overlayCanvasRef}
-          width={640}
-          height={480}
           className="absolute inset-0 w-full h-full pointer-events-none z-10"
         />
 
@@ -323,7 +402,10 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
                 Turn On Camera
               </button>
               <button
-                onClick={() => setIsMockStreaming(true)}
+                onClick={() => {
+                  clearOverlay();
+                  setIsMockStreaming(true);
+                }}
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-medium border border-slate-700 transition-colors"
               >
                 Simulate Demo
@@ -336,11 +418,24 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
         {isMockStreaming && (
           <div className="absolute top-3 left-3 z-20 bg-amber-500/90 text-slate-950 text-[11px] font-bold px-2.5 py-1 rounded-md shadow-md uppercase tracking-wider flex items-center space-x-1">
             <RefreshCw className="w-3 h-3 animate-spin" />
-            <span>AI Simulation Mode</span>
+            <span>AI Simulation Mode (MOCK)</span>
           </div>
         )}
 
-        {/* Error Notification with Help Link */}
+        {/* Detector Error Notification */}
+        {detectorError && (
+          <div className="absolute top-3 inset-x-3 z-30 bg-rose-950/95 border border-rose-700 text-rose-200 text-xs p-3 rounded-xl flex items-start space-x-2.5 shadow-2xl backdrop-blur-md">
+            <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-semibold text-rose-100 flex items-center space-x-2">
+                <span>DETECTOR ERROR</span>
+              </p>
+              <p className="text-rose-200 text-[11px] mt-0.5 leading-relaxed font-mono">{detectorError}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Camera Hardware/Permission Notification */}
         {cameraError && (
           <div className="absolute bottom-3 inset-x-3 z-20 bg-rose-950/95 border border-rose-800 text-rose-200 text-xs p-3 rounded-xl flex items-start space-x-2.5 shadow-xl backdrop-blur-md">
             <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
@@ -351,6 +446,7 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
                 <button
                   onClick={() => {
                     setCameraError(null);
+                    clearOverlay();
                     setIsMockStreaming(true);
                   }}
                   className="px-2.5 py-1 rounded bg-rose-900/60 hover:bg-rose-900 text-[11px] text-white font-medium transition-colors"
@@ -372,7 +468,15 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
       {/* Helper footer */}
       <div className="p-3 bg-slate-950 text-slate-400 text-[11px] border-t border-slate-800/80 flex items-center justify-between">
         <span>Framerate: ~3 FPS with temporal smoothing</span>
-        <span className="font-mono text-emerald-400">YOLOv8 Real-time Inference</span>
+        <span className="font-mono text-emerald-400">
+          {detectorError ? (
+            <span className="text-rose-400">Detector Error</span>
+          ) : isMockStreaming || detectorMode === 'mock' ? (
+            <span className="text-amber-400">Mock / Synthetic Stream</span>
+          ) : (
+            'YOLOv8 Real-time Inference'
+          )}
+        </span>
       </div>
     </div>
   );

@@ -88,17 +88,13 @@ class YOLODetector(Detector):
     @property
     def model(self):
         if self._model is None:
+            from ultralytics import YOLO
+            logger.info(f"[YOLODetector] Loading YOLO weights from: {self.model_path}")
             try:
-                from ultralytics import YOLO
-                logger.info(f"[YOLODetector] Loading YOLO weights from: {self.model_path}")
                 self._model = YOLO(self.model_path)
             except Exception as exc:
-                logger.warning(
-                    f"[YOLODetector] Failed to load custom weights at {self.model_path}: {exc}. "
-                    f"Falling back to pretrained yolov8n.pt."
-                )
-                from ultralytics import YOLO
-                self._model = YOLO("yolov8n.pt")
+                logger.error(f"[YOLODetector] Failed to load YOLO weights at {self.model_path}: {exc}")
+                raise RuntimeError(f"Failed to load YOLO model '{self.model_path}': {exc}")
         return self._model
 
     def detect(self, image: np.ndarray) -> Tuple[List[Detection], float]:
@@ -173,11 +169,14 @@ _detector_instance: Optional[Detector] = None
 def get_detector() -> Detector:
     global _detector_instance
     if _detector_instance is None:
-        if settings.DETECTOR_MODE.lower() == "yolo":
-            logger.info("[DetectorService] Initializing YOLODetector.")
+        mode = settings.DETECTOR_MODE.strip().lower()
+        if mode in ("real", "yolo"):
+            logger.info(f"[DetectorService] Initializing YOLODetector in real mode (mode={mode}).")
             _detector_instance = YOLODetector()
-        else:
+        elif mode == "mock":
             logger.info("[DetectorService] Initializing MockDetector (mock mode).")
             _detector_instance = MockDetector()
+        else:
+            raise RuntimeError(f"Invalid DETECTOR_MODE '{settings.DETECTOR_MODE}'. Must be 'real', 'yolo', or 'mock'.")
     return _detector_instance
 

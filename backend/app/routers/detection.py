@@ -36,8 +36,14 @@ async def detect_products_from_file(
         )
 
     h, w = image.shape[:2]
-    detector = get_detector()
-    detections, inference_time_ms = detector.detect(image)
+    try:
+        detector = get_detector()
+        detections, inference_time_ms = detector.detect(image)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"DETECTOR ERROR: {exc}",
+        )
 
     # Enrich detections with product catalog data
     for det in detections:
@@ -74,8 +80,14 @@ async def detect_products_from_base64(
         )
 
     h, w = image.shape[:2]
-    detector = get_detector()
-    detections, inference_time_ms = detector.detect(image)
+    try:
+        detector = get_detector()
+        detections, inference_time_ms = detector.detect(image)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"DETECTOR ERROR: {exc}",
+        )
 
     # Enrich detections with product catalog data
     for det in detections:

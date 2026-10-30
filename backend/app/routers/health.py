@@ -11,6 +11,8 @@ async def health_check():
         "status": "healthy",
         "service": "visioncart-ai",
         "environment": settings.ENVIRONMENT,
+        "detector": settings.DETECTOR_MODE,
+        "model": settings.MODEL_PATH,
         "detector_mode": settings.DETECTOR_MODE,
         "detector_device": settings.DETECTOR_DEVICE,
     }
