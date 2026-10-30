@@ -1,5 +1,4 @@
 from typing import Dict, List, Optional, Set, Tuple
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 

@@ -7,7 +7,6 @@ from app.core.security import hash_password
 from app.models.user import User, UserRole
 from app.models.product import Product, StockAdjustment
 from app.models.invoice import Invoice, InvoiceItem
-from app.models.idempotency import IdempotencyRecord
 
 
 def seed_database(db: Session = None) -> None:

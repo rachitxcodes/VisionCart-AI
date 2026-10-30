@@ -3,6 +3,16 @@
 
 VisionCart AI replaces traditional manual barcode scanning with automated, real-time computer-vision product recognition. Powered by YOLOv8, FastAPI, and React, VisionCart AI captures video frames from a cashier's webcam, tracks and stabilizes detected items with temporal frame smoothing, maps detections to inventory records, and completes GST-compliant checkouts backed by atomic, deadlock-free inventory synchronization.
 
+**Key Features at a Glance:**
+- 🔐 **JWT Auth** with Admin and Cashier roles, route guards, and 403 enforcement
+- 📦 **Product & Inventory CRUD** (Admin): categories, SKUs, stock adjustments with full audit ledger, reorder alerts
+- 🎥 **Live CV Checkout** (Cashier): webcam stream → YOLOv8 inference → bounding-box overlay → auto-cart building
+- 🧾 **GST-Compliant Invoicing**: CGST/SGST split, integer paise precision, unique sequential invoice numbers, PDF download
+- 🔒 **Atomic Inventory Sync**: `SELECT FOR UPDATE` row locks, all-or-nothing rollback, idempotency keys prevent double deductions
+- 📊 **Admin Analytics Dashboard**: daily revenue chart, top products, KPIs, low-stock alerts (Recharts)
+- 📖 **Help Center & Guide Hub** (`/guide`): role-aware step-by-step guides, feature cards, FAQ accordion, live search, contextual "?" links throughout the UI
+- 🐳 **One-command Docker startup** with automatic migrations and demo seed data
+
 ---
 
 ## 🚀 Quick Start
@@ -428,6 +438,30 @@ erDiagram
   npm run build --prefix frontend
   ```
 
+
+### Milestone M13: Full QA Pass, Guide Hub & Code Audit
+- **What was built:** Comprehensive end-to-end QA pass (30/31 checks passing); Guide Hub at `/guide` with 6 feature cards, 9 how-to step-by-step guides, live search, FAQ accordion, About section (GLA University, B.Tech CSE AIML, 5th Semester Mini Project); contextual "?" help links on Cashier POS, Products page, and Analytics Dashboard; 6 new Vitest unit tests; PDF endpoint route aliases for cross-client compatibility; cart stock-ceiling enforcement with amber warning banner; granular camera permission error messages; full QA automation script with 31 API-level checks; `docs/QA_REPORT.md` with 30 PASS / 0 FAIL / 1 UNVERIFIED (PostgreSQL concurrency - Docker Desktop not available on host machine).
+- **Files involved:**
+  - `frontend/src/pages/GuideHubPage.tsx`, `frontend/src/GuideHub.test.ts`
+  - `frontend/src/components/Navbar.tsx`, `frontend/src/components/CameraFeed.tsx`, `frontend/src/components/CartPanel.tsx`
+  - `backend/app/routers/checkout.py`, `backend/app/main.py`, `backend/app/schemas/cart.py`, `backend/app/schemas/detector.py`
+  - `docs/QA_REPORT.md`, `docs/ACCEPTANCE.md`, `scripts/comprehensive_qa.py`, `docs/PROJECT_PROGRESS.md`
+- **Key decisions & Rationale:**
+  - *Decision:* Guide Hub uses role-aware ordering (cashier-first or admin-first depending on role). *Rationale:* Reduces cognitive load - most relevant guides surface at the top for each role.
+  - *Decision:* Invoice PDF served at both `/api/checkout/{id}/pdf` and `/api/invoices/{id}/pdf`. *Rationale:* Different frontend components used different URL patterns; both are now aliased.
+  - *Decision:* Cart stock ceiling enforced client-side before checkout request. *Rationale:* Instant user feedback without a network round-trip; backend still performs authoritative validation.
+- **Problems hit & resolutions:**
+  - *Problem:* `GuideHubPage.tsx` inline data not importable by Vitest without React renderer. *Resolution:* Refactored to named module-level exports so tests import pure logic without JSX.
+  - *Problem:* Pydantic v2 aliases on `CartSummary` required `ConfigDict(populate_by_name=True)`. *Resolution:* Added config and updated `cart_service.py` to populate both field names and aliases.
+  - *Problem:* QA script left test products in DB if killed mid-run, breaking count assertions. *Resolution:* Added SQLAlchemy cleanup block in `comprehensive_qa.py` finally handler.
+- **Verification:**
+  ```bash
+  $env:PYTHONPATH="backend"; .\.venv\Scripts\pytest backend\tests\ -v     # 24 passed
+  npm test --prefix frontend                                                    # 9 passed
+  npm run build --prefix frontend                                               # 0 TypeScript errors
+  python scripts/comprehensive_qa.py                                           # 30 PASS, 0 FAIL, 1 UNVERIFIED
+  ```
+
 ---
 
 ## 🧠 Key Concepts & Engineering Principles
@@ -510,6 +544,9 @@ Checkout operations execute inside an atomic database transaction:
 - `GET /api/analytics/kpis?days=30`: Aggregated revenue, invoice count, and average basket value.
 - `GET /api/analytics/low-stock`: Critical replenishment alerts.
 
+### Help Center & Guide Hub
+- `GET /guide`: Role-aware Help Center. Displays 6 feature cards, 9 step-by-step how-to guides (role-ordered), live search filter, FAQ accordion, and contextual About section. Accessible to both Admin and Cashier roles. No API backend; served as a React SPA route.
+
 ---
 
 ## 🎯 Fine-Tuning Guide (Custom Retail Dataset)
@@ -568,7 +605,7 @@ Update each product's `detector_class` in the Admin Products dashboard to match 
 
 ### Run Backend Pytest Suite
 ```bash
-# Run all 24 tests
+# Run all 24 backend tests
 $env:PYTHONPATH="backend"; .\.venv\Scripts\pytest backend\tests\ -v
 
 # Run concurrency and idempotency tests specifically
@@ -577,12 +614,21 @@ $env:PYTHONPATH="backend"; .\.venv\Scripts\pytest backend\tests\test_concurrency
 
 ### Run Frontend Vitest & Build
 ```bash
-# Run Vitest test suite
+# Run Vitest test suite (9 tests: App smoke + GuideHub unit tests)
 npm test --prefix frontend
 
 # Run production asset build
 npm run build --prefix frontend
 ```
+
+### Run Full QA Automation Script
+```bash
+# 31 API-level integration checks (30 PASS / 0 FAIL / 1 UNVERIFIED)
+# Requires backend running on port 8000 and DATABASE_URL set
+$env:PYTHONPATH="backend"
+python scripts/comprehensive_qa.py
+```
+> **Note:** The PostgreSQL row-locking concurrency test remains UNVERIFIED because Docker Desktop is not available on the development host. All other 30 checks pass end-to-end.
 
 ---
 
@@ -594,6 +640,9 @@ npm run build --prefix frontend
 | **"Insufficient stock" error on checkout** | Physical catalog inventory has been depleted | Open Admin Products (`/admin/products`), click **Adjust Stock**, and select `ADD` to restock the item. |
 | **Port 8000 or 5173 already in use** | Another process is holding the port | Change `PORT` in `.env` or terminate the lingering process via `netstat -ano \| findstr :8000`. |
 | **Model download timeout on fresh container start** | Network restriction downloading `yolov8n.pt` | Set `DETECTOR_MODE=mock` in `.env` for instantaneous offline execution. |
+| **Docker Desktop not running** | `docker compose up` fails immediately | Start Docker Desktop first. Or run locally: activate `.venv`, run migrations, seed, and start uvicorn + `npm run dev` (see Local Development section). |
+| **PowerShell execution policy error** | Scripts blocked on Windows | Run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once in an admin PowerShell. |
+| **Camera permission denied in browser** | Browser blocks webcam access | Click the address-bar lock icon > Camera > Allow. Alternatively, use the **Simulate Feed** button on the Cashier POS to demo without a webcam. |
 
 ---
 

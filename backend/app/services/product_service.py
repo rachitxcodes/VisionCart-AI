@@ -1,5 +1,5 @@
 from typing import List, Optional
-from sqlalchemy import select, or_, and_
+from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 
