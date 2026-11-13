@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import {
-  BookOpen,
   Search,
   Camera,
   ShoppingBag,
@@ -9,13 +8,8 @@ import {
   ShieldCheck,
   TrendingUp,
   Package,
-  CheckCircle2,
-  HelpCircle,
-  Lightbulb,
   ChevronDown,
   ChevronUp,
-  Sparkles,
-  Info,
 } from 'lucide-react';
 
 export interface GuideStep {
@@ -59,183 +53,187 @@ export const FEATURE_CARDS = [
     desc: 'Clear visual charts showing revenue trends, daily baskets, and low-stock reorder alerts.',
   },
   {
-    key: 'rbac',
-    title: 'Role-Based Access Control',
-    desc: 'Secure isolation ensuring Cashiers focus on POS and Admins manage business operations.',
+    key: 'atomic-transactions',
+    title: 'Atomic & Idempotent Safety',
+    desc: 'Row-level database locks ensure inventory is deducted once, preventing double-checkout.',
   },
 ];
 
-// 9 Step-by-Step How-To Guides
+// 9 Plain-language step-by-step guides
 export const GUIDES: GuideStep[] = [
   {
     id: 'guide-1',
-    title: '1. Log In and Log Out',
+    title: 'How to Log In and Log Out',
     audience: 'both',
     steps: [
-      'Open the login screen at /login in your web browser.',
-      'Enter your email address and password, or click one of the quick Demo buttons.',
-      'Click the "Sign In" button to enter your workstation.',
-      'When finished, click the "Logout" button at the top right of the navigation bar.',
+      'Open the login screen at /login in your browser.',
+      'Enter your email address and password, or click one of the pre-filled demo account buttons.',
+      'Click the "Sign in" button to enter the application.',
+      'When your work shift is complete, click "Log out" in the top navigation bar.',
     ],
   },
   {
     id: 'guide-2',
-    title: '2. Start the Camera and Scan Products',
+    title: 'How to Start the Camera and Scan Items',
     audience: 'cashier',
     steps: [
-      'Navigate to the Cashier POS station from the top navigation bar.',
-      'Click the green "Start Camera" button in the scanner header.',
-      'When your browser asks for permission, click "Allow".',
-      'Hold any product steady in front of the lens for 1-2 seconds.',
-      'The camera draws a green box around the item and adds it to the customer cart.',
+      'Navigate to the Cashier POS page from the navigation bar.',
+      'Click the green "Start camera" button above the video area.',
+      'If prompted by your browser, click "Allow" to grant webcam access permissions.',
+      'Hold catalog items in front of the lens. Recognized items will appear on the receipt.',
     ],
   },
   {
     id: 'guide-3',
-    title: '3. What to Do If the Camera Doesn\'t Work',
+    title: 'What to Do If the Camera Is Not Working',
     audience: 'cashier',
     steps: [
-      'Check the browser address bar icon and ensure camera permission is set to "Allow".',
-      'If no webcam is connected, click the "Simulate Feed" button to test with demo frames.',
-      'Alternatively, use the "+ Add manual item" dropdown at the top of the cart to select items.',
-      'Click "Add" to put the selected item straight into the active cart.',
+      'Check the address bar lock icon to verify camera permission is set to "Allow".',
+      'Make sure no other desktop application is currently using your webcam hardware.',
+      'If your computer does not have a webcam, click "Simulate feed" to test the system.',
+      'Refresh your browser tab or restart your browser if hardware fails to initialize.',
     ],
   },
   {
     id: 'guide-4',
-    title: '4. Add, Remove, or Change Items in the Cart by Hand',
+    title: 'How to Edit the Cart by Hand',
     audience: 'cashier',
     steps: [
-      'To add an item manually, pick it from the catalog dropdown and click "Add".',
-      'To increase quantity, click the "+" button next to the item count.',
-      'To decrease quantity, click the "-" button.',
-      'To remove an item completely, click the red trash can icon.',
-      'To reset the customer basket, click the "Clear Cart" button at the top of the cart.',
+      'To increase or decrease item quantities, click the "+" or "-" buttons on the receipt.',
+      'To remove an item entirely from the current sale, click the "Remove" button on that line.',
+      'To add items without scanning, use the product search dropdown at the top of the receipt.',
+      'To discard all items and start over, click the "Clear" button in the receipt header.',
     ],
   },
   {
     id: 'guide-5',
-    title: '5. Check Out and Download the Invoice',
+    title: 'How to Complete Checkout and Download an Invoice',
     audience: 'cashier',
     steps: [
-      'Review the line items, taxable value, CGST, SGST, and Grand Total.',
-      'Click the green "Pay & Generate Tax Invoice" button.',
-      'The invoice modal appears with a green checkmark and complete tax breakdown.',
-      'Click "Download Tax Invoice (PDF)" to save a printable receipt for the customer.',
-      'Click "New Transaction" to reset the cart for the next customer.',
+      'Verify that all customer products and quantities on the receipt are correct.',
+      'Review the CGST, SGST, and grand total amounts calculated on the receipt.',
+      'Click the full-width green "Take payment" button at the bottom of the receipt.',
+      'When the tax invoice appears, click "Download PDF" to save or print the receipt.',
     ],
   },
   {
     id: 'guide-6',
-    title: '6. Add a New Product (Admin)',
+    title: 'How to Add a New Product to the Catalog',
     audience: 'admin',
     steps: [
-      'Open the Products management page (/admin/products) from the top bar.',
-      'Click the blue "Add New Product" button at the top right.',
-      'Enter the unique SKU, product name, price in paise (e.g., 5000 = ₹50.00), and category.',
-      'Select the GST tax rate (0%, 5%, 12%, 18%, or 28%).',
-      'Set initial stock units, reorder alert level, and detector label (e.g., banana).',
-      'Click "Save Product" to publish the item to the catalog.',
+      'Open the Products page from the top navigation bar (administrator privileges required).',
+      'Click the "Add product" button in the upper right corner.',
+      'Enter the SKU, product name, category, price in paise (e.g., 5000 = ₹50.00), and GST rate.',
+      'Enter the detector class name (e.g. "banana", "bottle") so the camera recognizes it.',
+      'Click "Save product" to immediately activate the item in the store catalog.',
     ],
   },
   {
     id: 'guide-7',
-    title: '7. Update Stock and Handle Low-Stock Alerts (Admin)',
+    title: 'How to Update Stock and Handle Low-Stock Alerts',
     audience: 'admin',
     steps: [
-      'In the Products list, locate the item you want to adjust and click the Sliders icon.',
-      'Choose an action: ADD (receive stock), DEDUCT (damaged/expired), or SET (audit count).',
-      'Enter the quantity and select the reason from the dropdown.',
-      'Click "Apply Stock Change". The change is logged in the audit ledger.',
-      'On the Analytics Dashboard, view items highlighted in red and click "+10 Restock" for quick replenishment.',
+      'Locate the product on the Products page or find it on the Analytics low-stock list.',
+      'Click the adjust stock icon button in the action column.',
+      'Select whether to add stock, deduct damaged goods, or set a new absolute count.',
+      'Enter the quantity and select the audit reason, then click "Apply stock change".',
     ],
   },
   {
     id: 'guide-8',
-    title: '8. Link a Product to What the Camera Sees (Admin)',
+    title: 'How to Link a Product to an AI Detector Label',
     audience: 'admin',
     steps: [
-      'In the Products table, click the Edit pencil icon next to any product.',
-      'Scroll down to the "Detector Class Mapping" field.',
-      'Type the exact label the AI camera detects (e.g., "apple", "banana", "bottle", "cup", "donut").',
-      'Click "Save Product".',
-      'The next time that object appears in the camera, VisionCart maps it to this catalog item.',
+      'Open the Products page and click the edit icon for the target product.',
+      'Find the "Detector class label" input field.',
+      'Enter the lower-case COCO object label that the camera sees (e.g., "apple", "bottle", "cup").',
+      'Click "Save product". The camera scanner will now automatically map that object to this product.',
     ],
   },
   {
     id: 'guide-9',
-    title: '9. Read the Analytics Dashboard (Admin)',
+    title: 'How to Read the Business Analytics Dashboard',
     audience: 'admin',
     steps: [
-      'Open the Analytics dashboard (/admin/dashboard) from the top bar.',
-      'Review the 4 top KPI cards: Total Revenue, Invoices Issued, Average Basket, and Low-Stock count.',
-      'Use the "Last 7d", "Last 14d", and "Last 30d" filters to change the time window.',
-      'Examine the Area Chart to spot sales peaks and the Bar Chart for top-selling items.',
-      'Check the Critical Low-Stock Alerts grid at the bottom to reorder depleted inventory.',
+      'Open the Analytics page from the top navigation bar.',
+      'Select your analysis window: Last 7 days, 14 days, or 30 days.',
+      'Review the key summary line and KPI metrics for total sales, invoice count, and average basket size.',
+      'Inspect the daily revenue trend chart and top products list to gauge store velocity.',
     ],
   },
 ];
 
-// FAQ Items
+// 5 Comprehensive FAQ & Troubleshooting items
 export const FAQ_LIST: FAQItem[] = [
   {
     id: 'faq-1',
-    question: 'What should I do if an item is not detected by the camera?',
+    question: 'How does VisionCart prevent item flickering during video scanning?',
     answer:
-      'Ensure the item is well-lit and not covered by your hands. Hold the product still in the center of the frame for 1-2 seconds. If it still does not detect, use the manual dropdown above the cart to select the item and click Add.',
+      'VisionCart applies temporal frame smoothing: an item must appear in at least 3 consecutive frames before it is added to the receipt, and is retained for 5 frames if temporarily obstructed.',
   },
   {
     id: 'faq-2',
-    question: 'Why did the camera detect the wrong item?',
+    question: 'How are GST calculations split on invoices?',
     answer:
-      'Objects with similar shapes or colors may occasionally be confused under low light. You can click the trash icon next to the incorrect line item in the cart and add the correct product using the manual catalog selector.',
+      'Each line item taxable value is computed from its unit price and quantity. Central GST (CGST) and State GST (SGST) are each calculated at exactly half the statutory GST rate in integer paise precision.',
   },
   {
     id: 'faq-3',
-    question: 'What does the "Insufficient stock" error message mean?',
+    question: 'What happens if a customer checks out an item with insufficient stock?',
     answer:
-      'This warning appears when the requested quantity exceeds physical inventory. The transaction rolls back cleanly with zero charge. An administrator can restock the item in the Products page or Dashboard to allow the sale.',
+      'The checkout transaction is fully atomic. If any item exceeds available inventory, the entire sale rolls back with an inline error naming the depleted item. No partial deductions ever occur.',
   },
   {
     id: 'faq-4',
-    question: 'Why is my PDF invoice not downloading?',
+    question: 'What happens if a cashier clicks "Take payment" twice during a slow network connection?',
     answer:
-      'Make sure your browser is not blocking pop-ups or automatic file downloads. You can also re-download any completed invoice by opening the invoice modal or asking your store administrator to inspect historical records.',
+      'Every checkout request includes a unique UUID idempotency key. If a request is submitted more than once, the backend returns the already-created invoice without re-deducting stock.',
   },
   {
     id: 'faq-5',
-    question: 'My browser says "Camera permission was denied". How do I fix it?',
+    question: 'Can I use VisionCart without physical camera hardware attached?',
     answer:
-      'Click the lock or camera icon on the left side of your browser URL address bar. Change Camera from "Block" to "Allow", and reload the page. Alternatively, use the "Simulate Feed" button to test the POS without a camera.',
+      'Yes. Click the "Simulate feed" button on the cashier counter. VisionCart will stream synthetic retail frames so you can test detection, receipt aggregation, and checkout.',
   },
 ];
 
+// Pure filtering logic
 export function filterAndSortGuides(
-  guidesList: GuideStep[],
-  selectedAudience: 'all' | 'cashier' | 'admin',
-  searchQuery: string
+  guides: GuideStep[],
+  audience: 'all' | 'cashier' | 'admin',
+  query: string
 ): GuideStep[] {
-  let list = guidesList;
-  if (selectedAudience === 'cashier') {
-    list = [...guidesList].sort((a, b) => (a.audience === 'cashier' ? -1 : b.audience === 'cashier' ? 1 : 0));
-  } else if (selectedAudience === 'admin') {
-    list = [...guidesList].sort((a, b) => (a.audience === 'admin' ? -1 : b.audience === 'admin' ? 1 : 0));
-  }
+  const q = query.trim().toLowerCase();
 
-  if (!searchQuery.trim()) return list;
-  const q = searchQuery.toLowerCase();
-  return list.filter(
-    (g) =>
-      g.title.toLowerCase().includes(q) ||
-      g.steps.some((s) => s.toLowerCase().includes(q))
-  );
+  return guides
+    .filter((g) => {
+      const matchesAudience = audience === 'all' || g.audience === audience || g.audience === 'both';
+      if (!matchesAudience) return false;
+      if (!q) return true;
+      return (
+        g.title.toLowerCase().includes(q) ||
+        g.steps.some((s) => s.toLowerCase().includes(q))
+      );
+    })
+    .sort((a, b) => {
+      if (audience === 'cashier') {
+        if (a.audience === 'cashier' && b.audience !== 'cashier') return -1;
+        if (b.audience === 'cashier' && a.audience !== 'cashier') return 1;
+      } else if (audience === 'admin') {
+        if (a.audience === 'admin' && b.audience !== 'admin') return -1;
+        if (b.audience === 'admin' && a.audience !== 'admin') return 1;
+      }
+      return 0;
+    });
 }
 
-export function filterFaqs(faqItems: FAQItem[], searchQuery: string): FAQItem[] {
-  if (!searchQuery.trim()) return faqItems;
-  const q = searchQuery.toLowerCase();
-  return faqItems.filter(
-    (f) => f.question.toLowerCase().includes(q) || f.answer.toLowerCase().includes(q)
+export function filterFaqs(faqs: FAQItem[], query: string): FAQItem[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return faqs;
+  return faqs.filter(
+    (f) =>
+      f.question.toLowerCase().includes(q) ||
+      f.answer.toLowerCase().includes(q)
   );
 }
 
@@ -247,30 +245,29 @@ export const GuideHubPage: React.FC = () => {
   );
   const [openFaqIds, setOpenFaqIds] = useState<string[]>(['faq-1']);
 
-  // Feature Highlights
   const featureCardsWithIcons = [
     {
-      icon: <Camera className="w-5 h-5 text-emerald-400" />,
+      icon: <Camera className="w-4 h-4 text-primary" />,
       ...FEATURE_CARDS[0],
     },
     {
-      icon: <ShoppingBag className="w-5 h-5 text-indigo-400" />,
+      icon: <ShoppingBag className="w-4 h-4 text-primary" />,
       ...FEATURE_CARDS[1],
     },
     {
-      icon: <Receipt className="w-5 h-5 text-sky-400" />,
+      icon: <Receipt className="w-4 h-4 text-primary" />,
       ...FEATURE_CARDS[2],
     },
     {
-      icon: <Package className="w-5 h-5 text-amber-400" />,
+      icon: <Package className="w-4 h-4 text-primary" />,
       ...FEATURE_CARDS[3],
     },
     {
-      icon: <TrendingUp className="w-5 h-5 text-violet-400" />,
+      icon: <TrendingUp className="w-4 h-4 text-primary" />,
       ...FEATURE_CARDS[4],
     },
     {
-      icon: <ShieldCheck className="w-5 h-5 text-teal-400" />,
+      icon: <ShieldCheck className="w-4 h-4 text-primary" />,
       ...FEATURE_CARDS[5],
     },
   ];
@@ -292,216 +289,180 @@ export const GuideHubPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10 text-slate-200">
-      {/* Header Banner */}
-      <div className="text-center space-y-3">
-        <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 text-xs font-semibold">
-          <BookOpen className="w-3.5 h-3.5" />
-          <span>VisionCart AI Help Center</span>
-        </div>
-        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
-          Guide Hub
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-10 font-body text-ink">
+      {/* Header Banner - Printed Manual Styling */}
+      <div className="border-b border-counter-grey pb-6">
+        <span className="text-xs font-medium text-ink-muted block">Store reference manual</span>
+        <h1 className="text-2xl font-heading font-semibold text-ink mt-1">
+          Guide hub
         </h1>
-        <p className="text-sm text-slate-400 max-w-xl mx-auto">
-          Learn VisionCart in minutes • Simple, step-by-step instructions for cashiers and store administrators
+        <p className="text-sm text-ink-muted mt-1.5 leading-relaxed max-w-prose">
+          Clear, step-by-step instructions for cashiers and store administrators operating VisionCart.
         </p>
 
         {/* Live Search Bar */}
-        <div className="max-w-md mx-auto mt-4 relative">
-          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+        <div className="mt-4 max-w-lg relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-ink-muted">
             <Search className="w-4 h-4" />
           </div>
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search guides, answers, or troubleshooting topics..."
-            className="w-full bg-slate-900 border border-slate-700/80 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 shadow-inner"
+            placeholder="Search guides and FAQs"
+            className="w-full bg-surface border border-counter-grey rounded-control pl-9 pr-3 py-2 text-xs text-ink placeholder:text-ink-muted focus:outline-none focus:border-primary shadow-xs"
           />
         </div>
       </div>
 
-      {/* Section 1: What Can VisionCart Do? */}
-      <div>
-        <div className="mb-4 flex items-center space-x-2">
-          <Sparkles className="w-5 h-5 text-indigo-400" />
-          <h2 className="text-lg font-bold text-white">What can VisionCart do?</h2>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Feature Capabilities */}
+      <section className="space-y-4">
+        <h2 className="text-base font-heading font-semibold text-ink">What VisionCart can do</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           {featureCardsWithIcons.map((feat, idx) => (
             <div
               key={idx}
-              className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-md hover:border-slate-700 transition-colors"
+              className="bg-surface border border-counter-grey rounded-control p-3.5 shadow-xs flex flex-col"
             >
-              <div className="w-9 h-9 rounded-xl bg-slate-950 flex items-center justify-center border border-slate-800 mb-3">
+              <div className="w-7 h-7 rounded-control bg-paper flex items-center justify-center border border-counter-grey mb-2.5">
                 {feat.icon}
               </div>
-              <h3 className="text-sm font-semibold text-white mb-1">{feat.title}</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">{feat.desc}</p>
+              <h3 className="text-xs font-semibold text-ink mb-1">{feat.title}</h3>
+              <p className="text-[11px] text-ink-muted leading-relaxed">{feat.desc}</p>
             </div>
           ))}
         </div>
-      </div>
+      </section>
 
-      {/* Section 2: Step-by-Step How-To Guides */}
-      <div>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+      {/* Step-by-Step Guides: Single column, max 70 chars per line, numbered sequences */}
+      <section className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-3 border-b border-counter-grey pb-3">
           <div>
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-              <span>Step-by-Step How-To Guides</span>
-            </h2>
-            <p className="text-xs text-slate-400">
-              Ordered for your role: <span className="font-semibold text-indigo-400">{user?.role || 'User'}</span>
+            <h2 className="text-base font-heading font-semibold text-ink">Step-by-step guides</h2>
+            <p className="text-xs text-ink-muted">
+              Showing guides for: <span className="font-medium text-ink">{user?.role || 'Staff'}</span>
             </p>
           </div>
 
           {/* Role Filter Tabs */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-1 flex self-start sm:self-auto">
+          <div className="bg-surface border border-counter-grey rounded-control p-0.5 flex self-start sm:self-auto text-xs">
             <button
               onClick={() => setSelectedAudience('all')}
-              className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+              className={`px-3 py-1 rounded-control font-medium transition-colors ${
                 selectedAudience === 'all'
-                  ? 'bg-indigo-600 text-white'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-paper text-ink font-semibold border border-counter-grey'
+                  : 'text-ink-muted hover:text-ink'
               }`}
             >
-              All Guides
+              All
             </button>
             <button
               onClick={() => setSelectedAudience('cashier')}
-              className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+              className={`px-3 py-1 rounded-control font-medium transition-colors ${
                 selectedAudience === 'cashier'
-                  ? 'bg-indigo-600 text-white'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-paper text-ink font-semibold border border-counter-grey'
+                  : 'text-ink-muted hover:text-ink'
               }`}
             >
-              Cashier Station
+              Cashier
             </button>
             <button
               onClick={() => setSelectedAudience('admin')}
-              className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+              className={`px-3 py-1 rounded-control font-medium transition-colors ${
                 selectedAudience === 'admin'
-                  ? 'bg-indigo-600 text-white'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-paper text-ink font-semibold border border-counter-grey'
+                  : 'text-ink-muted hover:text-ink'
               }`}
             >
-              Store Admin
+              Admin
             </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredGuides.map((guide) => (
-            <div
-              key={guide.id}
-              id={guide.id}
-              className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col justify-between hover:border-slate-700 transition-colors"
-            >
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${
-                      guide.audience === 'admin'
-                        ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                        : guide.audience === 'cashier'
-                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                        : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
-                    }`}
-                  >
-                    {guide.audience}
+        {filteredGuides.length === 0 ? (
+          <div className="p-8 text-center text-ink-muted bg-surface border border-counter-grey rounded-control text-xs">
+            No guides match your search query.
+          </div>
+        ) : (
+          <div className="space-y-4 max-w-2xl">
+            {filteredGuides.map((guide) => (
+              <article
+                key={guide.id}
+                id={guide.id}
+                className="bg-surface border border-counter-grey rounded-panel p-5 shadow-xs space-y-3"
+              >
+                <div className="flex items-center justify-between border-b border-counter-grey pb-2">
+                  <span className="text-[11px] font-medium text-ink-muted bg-paper px-2 py-0.5 rounded-control border border-counter-grey">
+                    {guide.audience === 'both' ? 'All staff' : guide.audience === 'admin' ? 'Admin' : 'Cashier'}
                   </span>
-                  <span className="text-[11px] font-mono text-slate-500">#{guide.id}</span>
+                  <span className="text-[11px] font-mono text-ink-muted">#{guide.id}</span>
                 </div>
-                <h3 className="text-sm font-bold text-white mb-3">{guide.title}</h3>
-                <ol className="space-y-2 text-xs text-slate-300">
+
+                <h3 className="text-sm font-heading font-semibold text-ink">{guide.title}</h3>
+
+                {/* Numbered list: real sequence steps */}
+                <ol className="space-y-2 text-xs text-ink-muted">
                   {guide.steps.map((step, sIdx) => (
-                    <li key={sIdx} className="flex items-start space-x-2">
-                      <span className="flex-shrink-0 w-4 h-4 rounded-full bg-slate-800 text-indigo-400 flex items-center justify-center text-[10px] font-bold mt-0.5">
+                    <li key={sIdx} className="flex items-start space-x-2.5">
+                      <span className="flex-shrink-0 w-5 h-5 rounded-control bg-paper border border-counter-grey text-ink flex items-center justify-center text-[11px] font-mono font-medium mt-0.5">
                         {sIdx + 1}
                       </span>
-                      <span className="leading-relaxed">{step}</span>
+                      <span className="leading-relaxed text-ink/90 pt-0.5">{step}</span>
                     </li>
                   ))}
                 </ol>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
 
-      {/* Section 3: FAQ & Troubleshooting Accordion */}
-      <div>
-        <div className="mb-4 flex items-center space-x-2">
-          <HelpCircle className="w-5 h-5 text-sky-400" />
-          <h2 className="text-lg font-bold text-white">FAQ & Troubleshooting</h2>
-        </div>
+      {/* FAQ & Troubleshooting Accordion */}
+      <section className="space-y-4 max-w-2xl">
+        <h2 className="text-base font-heading font-semibold text-ink">Frequently asked questions</h2>
 
-        <div className="space-y-2">
-          {filteredFaqs.map((faq) => {
-            const isOpen = openFaqIds.includes(faq.id);
-            return (
-              <div
-                key={faq.id}
-                className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden transition-colors"
-              >
-                <button
-                  onClick={() => toggleFaq(faq.id)}
-                  aria-expanded={isOpen}
-                  className="w-full p-4 text-left flex items-center justify-between hover:bg-slate-800/40 transition-colors"
+        {filteredFaqs.length === 0 ? (
+          <div className="p-6 text-center text-ink-muted bg-surface border border-counter-grey rounded-control text-xs">
+            No questions match your query.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {filteredFaqs.map((faq) => {
+              const isOpen = openFaqIds.includes(faq.id);
+              return (
+                <div
+                  key={faq.id}
+                  className="bg-surface border border-counter-grey rounded-control overflow-hidden transition-colors"
                 >
-                  <span className="text-xs font-semibold text-white">{faq.question}</span>
-                  {isOpen ? (
-                    <ChevronUp className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                  <button
+                    onClick={() => toggleFaq(faq.id)}
+                    aria-expanded={isOpen}
+                    className="w-full p-3.5 text-left flex items-center justify-between hover:bg-paper transition-colors"
+                  >
+                    <span className="text-xs font-medium text-ink">{faq.question}</span>
+                    {isOpen ? (
+                      <ChevronUp className="w-4 h-4 text-ink-muted flex-shrink-0" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-ink-muted flex-shrink-0" />
+                    )}
+                  </button>
+                  {isOpen && (
+                    <div className="p-3.5 pt-0 text-xs text-ink-muted leading-relaxed border-t border-counter-grey/60 mt-1">
+                      {faq.answer}
+                    </div>
                   )}
-                </button>
-                {isOpen && (
-                  <div className="p-4 pt-0 text-xs text-slate-400 leading-relaxed border-t border-slate-800/60 mt-1">
-                    {faq.answer}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
-      {/* Section 4: Tips Box */}
-      <div className="bg-gradient-to-r from-indigo-950/40 via-slate-900 to-slate-900 border border-indigo-900/40 rounded-2xl p-5 shadow-lg flex items-start space-x-3.5">
-        <div className="w-9 h-9 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center border border-indigo-500/30 flex-shrink-0 mt-0.5">
-          <Lightbulb className="w-5 h-5" />
-        </div>
-        <div>
-          <h3 className="text-sm font-bold text-white mb-1.5">Scanning Best Practices</h3>
-          <ul className="text-xs text-slate-300 space-y-1.5 list-disc list-inside">
-            <li><strong className="text-white">Good Lighting:</strong> Ensure the checkout counter has clear overhead lighting to minimize shadows.</li>
-            <li><strong className="text-white">One Item at a Time:</strong> Introduce products steadily into the camera field for smoothest count updates.</li>
-            <li><strong className="text-white">Keep Items Separated:</strong> Avoid stacking items directly on top of each other so bounding boxes don't overlap.</li>
-          </ul>
-        </div>
-      </div>
-
-      {/* Section 5: About & Project Credits */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-xs text-slate-400 space-y-3">
-        <div className="flex items-center space-x-2 text-white font-bold text-sm">
-          <Info className="w-4 h-4 text-indigo-400" />
-          <span>About VisionCart AI</span>
-        </div>
-        <p className="leading-relaxed">
-          VisionCart AI is a computer-vision powered retail checkout and inventory platform that replaces manual barcode scanning with automated real-time product recognition and GST-compliant invoicing.
-        </p>
-        <p className="font-mono text-slate-300">
-          <strong>Technology Stack:</strong> React 18, Vite, Tailwind CSS, Recharts, FastAPI, SQLAlchemy 2.x, Alembic, PostgreSQL / SQLite, and Ultralytics YOLOv8.
-        </p>
-        <div className="pt-2 border-t border-slate-800 flex flex-wrap items-center justify-between text-slate-500">
-          <span>VisionCart AI Version: <strong>1.0.0</strong></span>
-          <span className="font-semibold text-slate-400">
-            Mini Project, 5th Semester, B.Tech CSE (AIML), GLA University
-          </span>
-        </div>
-      </div>
+      {/* Academic Credits & About */}
+      <footer className="border-t border-counter-grey pt-5 text-xs text-ink-muted space-y-1.5">
+        <p className="font-medium text-ink">VisionCart AI · Version 1.0.0</p>
+        <p>Mini Project, 5th Semester, B.Tech CSE (AIML), GLA University</p>
+      </footer>
     </div>
   );
 };
