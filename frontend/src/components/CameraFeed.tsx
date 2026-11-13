@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../api/client';
 import { cartApi } from '../api/cart';
 import { DetectionItem } from '../types';
-import { Camera, CameraOff, Video, AlertCircle, RefreshCw, HelpCircle } from 'lucide-react';
+import { Camera, CameraOff, AlertCircle, HelpCircle } from 'lucide-react';
 
 interface CameraFeedProps {
   onDetections: (detections: DetectionItem[]) => void;
@@ -20,7 +20,6 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
   const [detectorError, setDetectorError] = useState<string | null>(null);
   const [detectorMode, setDetectorMode] = useState<string>('real');
   const [isMockStreaming, setIsMockStreaming] = useState(false);
-  const [lastInferenceTime, setLastInferenceTime] = useState<number | null>(null);
   const [detectionCount, setDetectionCount] = useState<number>(0);
   const streamRef = useRef<MediaStream | null>(null);
   const isInferringRef = useRef<boolean>(false);
@@ -47,7 +46,6 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
       }
     }
     setDetectionCount(0);
-    setLastInferenceTime(null);
     onDetections([]);
   }, [onDetections]);
 
@@ -86,13 +84,13 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
       setIsMockStreaming(false);
     } catch (err: any) {
       console.warn('Camera access failed:', err);
-      let errorMsg = 'Could not access webcam. You can use Simulation mode.';
+      let errorMsg = 'Could not access webcam. You can use simulation mode.';
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        errorMsg = 'Camera permission was denied. Please allow camera access in your browser or click Simulate Feed.';
+        errorMsg = 'Camera permission was denied. Please allow camera access in your browser or switch to simulation.';
       } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        errorMsg = 'No camera hardware found on this computer. Click Simulate Feed below to test live recognition.';
+        errorMsg = 'No camera hardware found on this computer. Use simulation to test.';
       } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
-        errorMsg = 'Camera is already in use by another program. Close other apps or use Simulate Feed.';
+        errorMsg = 'Camera is in use by another program. Close other apps or use simulation.';
       } else if (err.message) {
         errorMsg = err.message;
       }
@@ -113,7 +111,7 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Dynamically match internal resolution to client display size
+    // Match internal canvas resolution to actual displayed CSS size
     const displayWidth = canvas.clientWidth || 640;
     const displayHeight = canvas.clientHeight || 480;
     if (canvas.width !== displayWidth || canvas.height !== displayHeight) {
@@ -134,35 +132,39 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
       const boxWidth = x2 - x1;
       const boxHeight = y2 - y1;
 
-      // Draw box boundary
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = '#10B981'; // Emerald
-      ctx.fillStyle = 'rgba(16, 185, 129, 0.15)';
+      // Yellow 2px outline for detection box
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#F5B82E';
+      ctx.fillStyle = 'rgba(245, 184, 46, 0.08)';
       ctx.strokeRect(x1, y1, boxWidth, boxHeight);
       ctx.fillRect(x1, y1, boxWidth, boxHeight);
 
-      // Label background & text
-      const labelText = `${det.product_name || det.class_name} (${Math.round(det.confidence * 100)}%)`;
-      ctx.font = 'bold 12px Inter, system-ui, sans-serif';
+      // Notched price-tag label with item name and price
+      const name = det.product_name || det.class_name;
+      const priceText = det.price_paise ? `  Rs ${(det.price_paise / 100).toFixed(0)}` : '';
+      const labelText = `${name}${priceText}`;
+
+      ctx.font = '600 12px "Figtree Variable", -apple-system, sans-serif';
       const textMetrics = ctx.measureText(labelText);
-      const textHeight = 16;
-      const textWidth = textMetrics.width;
+      const tagHeight = 22;
+      const tagWidth = textMetrics.width + 16;
+      const tagX = x1;
+      const tagY = Math.max(tagHeight + 2, y1);
 
-      ctx.fillStyle = '#10B981';
-      ctx.fillRect(x1, Math.max(0, y1 - textHeight - 4), textWidth + 8, textHeight + 4);
+      // Draw tag-yellow price tag with a notched left corner
+      ctx.fillStyle = '#F5B82E';
+      ctx.beginPath();
+      ctx.moveTo(tagX, tagY - tagHeight);
+      ctx.lineTo(tagX + tagWidth, tagY - tagHeight);
+      ctx.lineTo(tagX + tagWidth, tagY - 4);
+      ctx.lineTo(tagX + 6, tagY - 4);
+      ctx.lineTo(tagX, tagY - 10);
+      ctx.closePath();
+      ctx.fill();
 
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillText(labelText, x1 + 4, Math.max(textHeight, y1 - 4));
-
-      // Price badge
-      if (det.price_paise) {
-        const priceText = `₹${(det.price_paise / 100).toFixed(2)}`;
-        ctx.fillStyle = '#0F172A';
-        ctx.fillRect(x1, y2 - 20, 60, 20);
-        ctx.fillStyle = '#38BDF8';
-        ctx.font = 'bold 11px Inter, sans-serif';
-        ctx.fillText(priceText, x1 + 4, y2 - 6);
-      }
+      // Dark ink text on price tag
+      ctx.fillStyle = '#1C2321';
+      ctx.fillText(labelText, tagX + 6, tagY - 8);
     });
   };
 
@@ -185,19 +187,18 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
       ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
       base64Image = canvas.toDataURL('image/jpeg', 0.8);
     } else if (isMockStreaming && !isCameraActive) {
-      // Generate synthetic frame ONLY when real camera is off
+      // Synthetic demo frame only when real camera is off
       const canvas = canvasRef.current || document.createElement('canvas');
       canvas.width = inputWidth;
       canvas.height = inputHeight;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      // Dark background
-      ctx.fillStyle = '#0f172a';
+      ctx.fillStyle = '#1C2321';
       ctx.fillRect(0, 0, inputWidth, inputHeight);
 
-      // Draw grid
-      ctx.strokeStyle = '#1e293b';
+      // Draw quiet grid lines
+      ctx.strokeStyle = '#2B3431';
       for (let i = 0; i < inputWidth; i += 40) {
         ctx.beginPath();
         ctx.moveTo(i, 0);
@@ -211,18 +212,18 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
         ctx.stroke();
       }
 
-      // Draw placeholder items
-      ctx.fillStyle = '#facc15';
+      // Placeholder item shapes
+      ctx.fillStyle = '#F5B82E';
       ctx.beginPath();
       ctx.arc(200, 240, 45, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = '#0f172a';
-      ctx.font = 'bold 12px sans-serif';
+      ctx.fillStyle = '#1C2321';
+      ctx.font = '600 12px sans-serif';
       ctx.fillText('Banana', 178, 245);
 
-      ctx.fillStyle = '#0284c7';
+      ctx.fillStyle = '#146C54';
       ctx.fillRect(380, 180, 60, 120);
-      ctx.fillStyle = '#ffffff';
+      ctx.fillStyle = '#FFFFFF';
       ctx.fillText('Bottle', 393, 245);
 
       base64Image = canvas.toDataURL('image/jpeg', 0.8);
@@ -232,11 +233,9 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
 
     try {
       isInferringRef.current = true;
-      const startTime = performance.now();
       const res = await cartApi.detectBase64(base64Image);
-      const elapsed = Math.round(performance.now() - startTime);
 
-      // If user stopped feed while request was in-flight, discard results
+      // If user stopped feed while request was in flight, discard results
       if (!isCameraActive && !isMockStreaming) {
         clearOverlay();
         return;
@@ -247,7 +246,6 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
       if (activeMode) {
         setDetectorMode(activeMode);
       }
-      setLastInferenceTime(elapsed);
       setDetectionCount(res.count ?? res.detections?.length ?? 0);
       drawDetections(res.detections, inputWidth, inputHeight);
       onDetections(res.detections);
@@ -261,7 +259,7 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
     }
   }, [isCameraActive, isMockStreaming, isProcessingCart, onDetections, clearOverlay]);
 
-  // Periodic frame loop (~3.3 FPS = 300ms)
+  // Frame sampling loop (~3.3 FPS = 300ms)
   useEffect(() => {
     if (!isCameraActive && !isMockStreaming) return;
     const interval = setInterval(() => {
@@ -270,7 +268,7 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
     return () => clearInterval(interval);
   }, [isCameraActive, isMockStreaming, captureAndDetect]);
 
-  // Clean up media streams and clear canvas on unmount
+  // Clean up on unmount
   useEffect(() => {
     return () => {
       stopCamera();
@@ -278,41 +276,37 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
     };
   }, [stopCamera, clearOverlay]);
 
-  return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl flex flex-col">
-      {/* Feed Header */}
-      <div className="p-4 bg-slate-950/60 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center space-x-2">
-          <div className="relative flex h-3 w-3">
-            {(isCameraActive || isMockStreaming) && (
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            )}
-            <span
-              className={`relative inline-flex rounded-full h-3 w-3 ${
-                isCameraActive || isMockStreaming ? 'bg-emerald-500' : 'bg-slate-600'
-              }`}
-            ></span>
-          </div>
-          <span className="font-semibold text-sm text-white">Live AI Vision Scanner</span>
+  // Quiet readable status message
+  const statusText = isCameraActive
+    ? `Camera on, ${detectionCount} ${detectionCount === 1 ? 'item' : 'items'} seen`
+    : isMockStreaming
+    ? `Simulation on, ${detectionCount} ${detectionCount === 1 ? 'item' : 'items'} seen`
+    : 'Camera off';
 
-          {/* Active Detector Mode / Error Badge */}
+  return (
+    <div className="bg-surface border border-counter-grey rounded-panel overflow-hidden flex flex-col shadow-sm">
+      {/* Feed Header */}
+      <div className="px-4 py-3 bg-surface border-b border-counter-grey flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center space-x-2.5">
+          <span
+            className={`w-2 h-2 rounded-full ${
+              isCameraActive || isMockStreaming ? 'bg-primary animate-pulse' : 'bg-counter-grey'
+            }`}
+          />
+          <span className="text-xs font-medium text-ink">{statusText}</span>
+
+          {/* Calm plain-language mode badges */}
           {detectorError ? (
-            <span className="text-[10px] font-bold text-white bg-rose-600 px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse flex items-center space-x-1">
-              <span>DETECTOR ERROR</span>
+            <span className="text-[11px] font-medium text-white bg-signal px-2 py-0.5 rounded-control">
+              Detector error
             </span>
           ) : isMockStreaming || detectorMode === 'mock' ? (
-            <span className="text-[10px] font-bold text-amber-950 bg-amber-400 px-2 py-0.5 rounded-full uppercase tracking-wider">
-              MOCK
+            <span className="text-[11px] font-medium text-ink bg-tag-tint border border-tag-yellow/50 px-2 py-0.5 rounded-control">
+              Demo simulation
             </span>
           ) : (
-            <span className="text-[10px] font-bold text-emerald-950 bg-emerald-400 px-2 py-0.5 rounded-full uppercase tracking-wider">
-              REAL
-            </span>
-          )}
-
-          {lastInferenceTime !== null && (
-            <span className="text-[11px] font-mono text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
-              {lastInferenceTime}ms | {detectionCount} items
+            <span className="text-[11px] font-medium text-primary bg-primary-tint border border-primary/20 px-2 py-0.5 rounded-control">
+              Live recognition
             </span>
           )}
         </div>
@@ -321,8 +315,8 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
         <div className="flex items-center space-x-2">
           <Link
             to="/guide#guide-2"
-            className="text-slate-400 hover:text-indigo-400 p-1 rounded-lg hover:bg-slate-800 transition-colors"
-            title="Camera Scanning Guide"
+            className="text-ink-muted hover:text-ink p-1.5 rounded-control hover:bg-counter-light transition-colors"
+            title="Camera guide"
           >
             <HelpCircle className="w-4 h-4" />
           </Link>
@@ -330,18 +324,18 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
           {isCameraActive ? (
             <button
               onClick={stopCamera}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-rose-950/50 hover:bg-rose-900/60 text-rose-300 border border-rose-800/60 flex items-center space-x-1.5 transition-colors"
+              className="px-3 py-1.5 rounded-control text-xs font-semibold bg-signal hover:bg-red-700 text-white flex items-center space-x-1.5 transition-colors shadow-sm"
             >
               <CameraOff className="w-3.5 h-3.5" />
-              <span>Stop Camera</span>
+              <span>Stop camera</span>
             </button>
           ) : (
             <button
               onClick={startCamera}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white flex items-center space-x-1.5 transition-colors shadow-sm"
+              className="px-3.5 py-1.5 rounded-control text-xs font-semibold bg-primary hover:bg-primary-hover text-white flex items-center space-x-1.5 transition-colors shadow-sm"
             >
               <Camera className="w-3.5 h-3.5" />
-              <span>Start Camera</span>
+              <span>Start camera</span>
             </button>
           )}
 
@@ -351,20 +345,15 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
               clearOverlay();
               setIsMockStreaming(!isMockStreaming);
             }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors flex items-center space-x-1.5 ${
-              isMockStreaming
-                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
-            }`}
+            className="text-xs text-ink-muted hover:text-ink font-medium px-2 py-1.5 underline decoration-counter-grey hover:decoration-ink transition-colors"
           >
-            <Video className="w-3.5 h-3.5" />
-            <span>{isMockStreaming ? 'Stop Simulation' : 'Simulate Feed'}</span>
+            <span>{isMockStreaming ? 'Stop simulation' : 'Simulate feed'}</span>
           </button>
         </div>
       </div>
 
-      {/* Video Viewport with Overlay */}
-      <div className="relative w-full aspect-[4/3] bg-slate-950 flex items-center justify-center overflow-hidden">
+      {/* Video Viewport: kept dark because it displays raw camera video */}
+      <div className="relative w-full aspect-[4/3] bg-[#141A18] flex items-center justify-center overflow-hidden">
         {/* HTML5 Video element */}
         <video
           ref={videoRef}
@@ -387,61 +376,51 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
         {/* Offline / Idle State */}
         {!isCameraActive && !isMockStreaming && (
           <div className="text-center p-6 max-w-sm z-0">
-            <div className="w-16 h-16 rounded-2xl bg-slate-800/80 text-slate-400 flex items-center justify-center mx-auto mb-4 border border-slate-700/60 shadow-inner">
-              <Camera className="w-8 h-8" />
+            <div className="w-12 h-12 rounded-control bg-surface/10 text-white/70 flex items-center justify-center mx-auto mb-3 border border-white/10">
+              <Camera className="w-6 h-6" />
             </div>
-            <h3 className="text-base font-semibold text-slate-200 mb-1">Camera Feed Inactive</h3>
-            <p className="text-xs text-slate-400 mb-5 leading-relaxed">
-              Start the camera or toggle simulation mode to recognize products placed in front of the scanner.
+            <h2 className="text-sm font-heading font-semibold text-white mb-1">Camera is off</h2>
+            <p className="text-xs text-white/70 mb-4 leading-relaxed">
+              Start the camera or toggle simulation to identify items on the shop counter.
             </p>
             <div className="flex justify-center gap-2">
               <button
                 onClick={startCamera}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-medium shadow-md shadow-indigo-600/20 transition-colors"
+                className="px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-control text-xs font-semibold shadow-sm transition-colors"
               >
-                Turn On Camera
+                Start camera
               </button>
               <button
                 onClick={() => {
                   clearOverlay();
                   setIsMockStreaming(true);
                 }}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-medium border border-slate-700 transition-colors"
+                className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white rounded-control text-xs font-medium border border-white/15 transition-colors"
               >
-                Simulate Demo
+                Simulate feed
               </button>
             </div>
           </div>
         )}
 
-        {/* Simulation Mode Indicator */}
-        {isMockStreaming && (
-          <div className="absolute top-3 left-3 z-20 bg-amber-500/90 text-slate-950 text-[11px] font-bold px-2.5 py-1 rounded-md shadow-md uppercase tracking-wider flex items-center space-x-1">
-            <RefreshCw className="w-3 h-3 animate-spin" />
-            <span>AI Simulation Mode (MOCK)</span>
-          </div>
-        )}
-
-        {/* Detector Error Notification */}
+        {/* Detector Error Banner */}
         {detectorError && (
-          <div className="absolute top-3 inset-x-3 z-30 bg-rose-950/95 border border-rose-700 text-rose-200 text-xs p-3 rounded-xl flex items-start space-x-2.5 shadow-2xl backdrop-blur-md">
-            <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+          <div className="absolute top-3 inset-x-3 z-30 bg-signal text-white text-xs p-3 rounded-control flex items-start space-x-2.5 shadow-lg">
+            <AlertCircle className="w-4 h-4 text-white flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="font-semibold text-rose-100 flex items-center space-x-2">
-                <span>DETECTOR ERROR</span>
-              </p>
-              <p className="text-rose-200 text-[11px] mt-0.5 leading-relaxed font-mono">{detectorError}</p>
+              <p className="font-semibold text-white">Detector error</p>
+              <p className="text-white/90 text-[11px] mt-0.5 leading-relaxed font-mono">{detectorError}</p>
             </div>
           </div>
         )}
 
-        {/* Camera Hardware/Permission Notification */}
+        {/* Camera Permission / Hardware Notice */}
         {cameraError && (
-          <div className="absolute bottom-3 inset-x-3 z-20 bg-rose-950/95 border border-rose-800 text-rose-200 text-xs p-3 rounded-xl flex items-start space-x-2.5 shadow-xl backdrop-blur-md">
-            <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+          <div className="absolute bottom-3 inset-x-3 z-20 bg-signal text-white text-xs p-3 rounded-control flex items-start space-x-2.5 shadow-lg">
+            <AlertCircle className="w-4 h-4 text-white flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="font-semibold text-white">Camera Notice</p>
-              <p className="text-rose-200 text-[11px] mt-0.5 leading-relaxed">{cameraError}</p>
+              <p className="font-semibold text-white">Camera notice</p>
+              <p className="text-white/90 text-[11px] mt-0.5 leading-relaxed">{cameraError}</p>
               <div className="mt-2 flex items-center space-x-3">
                 <button
                   onClick={() => {
@@ -449,15 +428,15 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
                     clearOverlay();
                     setIsMockStreaming(true);
                   }}
-                  className="px-2.5 py-1 rounded bg-rose-900/60 hover:bg-rose-900 text-[11px] text-white font-medium transition-colors"
+                  className="px-2.5 py-1 rounded-control bg-white/20 hover:bg-white/30 text-[11px] text-white font-medium transition-colors"
                 >
-                  Switch to Simulate Feed
+                  Switch to simulation
                 </button>
                 <Link
                   to="/guide#guide-3"
-                  className="text-[11px] text-rose-300 hover:text-white underline"
+                  className="text-[11px] text-white/90 hover:text-white underline"
                 >
-                  Troubleshooting Guide →
+                  Troubleshooting guide
                 </Link>
               </div>
             </div>
@@ -465,18 +444,10 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
         )}
       </div>
 
-      {/* Helper footer */}
-      <div className="p-3 bg-slate-950 text-slate-400 text-[11px] border-t border-slate-800/80 flex items-center justify-between">
-        <span>Framerate: ~3 FPS with temporal smoothing</span>
-        <span className="font-mono text-emerald-400">
-          {detectorError ? (
-            <span className="text-rose-400">Detector Error</span>
-          ) : isMockStreaming || detectorMode === 'mock' ? (
-            <span className="text-amber-400">Mock / Synthetic Stream</span>
-          ) : (
-            'YOLOv8 Real-time Inference'
-          )}
-        </span>
+      {/* Quiet, quiet footer */}
+      <div className="px-4 py-2 bg-surface text-ink-muted text-xs border-t border-counter-grey flex items-center justify-between">
+        <span>Vision recognition ready</span>
+        <span>Sampling ~3 frames per second</span>
       </div>
     </div>
   );

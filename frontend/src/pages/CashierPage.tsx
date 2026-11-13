@@ -137,40 +137,31 @@ export const CashierPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      {/* Page Title */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+      {/* Page Header */}
+      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2 border-b border-counter-grey pb-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">Cashier Checkout Station</h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Real-time automated object recognition POS • Session: <span className="font-mono text-indigo-400">{sessionId}</span>
+          <h1 className="text-xl font-heading font-semibold text-ink">
+            Checkout counter
+          </h1>
+          <p className="text-xs text-ink-muted mt-0.5">
+            Real-time vision recognition • Counter session <span className="font-mono text-ink">{sessionId}</span>
           </p>
         </div>
       </div>
 
-      {/* Main Grid: Left = Video Feed, Right = Cart Panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      {/* Main Grid: Left = Video Feed (approx 60%), Right = Receipt Cart (approx 40%) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* Camera / CV Feed */}
-        <div className="lg:col-span-7 space-y-4">
+        <div className="lg:col-span-7">
           <CameraFeed
             onDetections={handleDetections}
             isProcessingCart={isProcessingCart}
           />
-
-          {/* Quick Shortcuts / Tips */}
-          <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 text-xs text-slate-400">
-            <h4 className="font-semibold text-slate-300 mb-1">POS Operator Guide:</h4>
-            <ul className="list-disc list-inside space-y-1 text-[11px] text-slate-400">
-              <li>Place items in the camera view to automatically identify them.</li>
-              <li>Temporal smoothing suppresses transient bounding box flicker.</li>
-              <li>Use the right-hand panel to adjust quantities, remove items, or add items manually.</li>
-              <li>Transactions are atomic with GST invoice generation and instant stock deduction.</li>
-            </ul>
-          </div>
         </div>
 
-        {/* Dynamic Cart & Checkout */}
-        <div className="lg:col-span-5 h-[calc(100vh-10rem)] sticky top-20">
+        {/* Dynamic Receipt Cart */}
+        <div className="lg:col-span-5 lg:sticky lg:top-18">
           <CartPanel
             cart={cart}
             onUpdateQuantity={handleUpdateQuantity}
@@ -192,4 +183,3 @@ export const CashierPage: React.FC = () => {
     </div>
   );
 };
-

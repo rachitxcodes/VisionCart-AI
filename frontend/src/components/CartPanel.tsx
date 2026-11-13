@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { CartSummary, Product } from '../types';
 import { productsApi } from '../api/products';
-import { ShoppingBag, Plus, Minus, Trash2, ArrowRight, AlertTriangle, RefreshCw, Sparkles, HelpCircle } from 'lucide-react';
+import { Plus, Minus, Trash2, AlertCircle, HelpCircle } from 'lucide-react';
 
 interface CartPanelProps {
   cart: CartSummary;
@@ -61,7 +61,7 @@ export const CartPanel: React.FC<CartPanelProps> = ({
     const newQty = existing ? existing.quantity + 1 : 1;
 
     if (newQty > maxStock) {
-      setStockWarning(`Cannot add "${prod?.name || 'Item'}": Available stock limit of ${maxStock} units reached.`);
+      setStockWarning(`Only ${maxStock} units of "${prod?.name || 'this item'}" available in stock.`);
       return;
     }
 
@@ -76,7 +76,7 @@ export const CartPanel: React.FC<CartPanelProps> = ({
     const name = prod?.name || cart.items.find((i) => i.product_id === productId)?.product_name || 'Item';
 
     if (currentQty + 1 > maxStock) {
-      setStockWarning(`Cannot exceed available stock for "${name}" (only ${maxStock} in stock).`);
+      setStockWarning(`Only ${maxStock} in stock for "${name}".`);
       return;
     }
 
@@ -92,31 +92,29 @@ export const CartPanel: React.FC<CartPanelProps> = ({
     });
   };
 
+  const todayDate = new Date().toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl flex flex-col h-full shadow-xl overflow-hidden">
-      {/* Header */}
-      <div className="p-4 bg-slate-950/60 border-b border-slate-800 flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 rounded-lg bg-indigo-600/20 text-indigo-400 flex items-center justify-center border border-indigo-500/30">
-            <ShoppingBag className="w-4 h-4" />
+    <div className="receipt-paper border border-counter-grey receipt-torn-bottom rounded-t-panel flex flex-col h-full shadow-sm text-ink font-body">
+      {/* Receipt Shop Header */}
+      <div className="p-4 border-b border-counter-grey bg-paper/60 flex items-start justify-between">
+        <div>
+          <div className="flex items-center space-x-2">
+            <span className="font-heading font-bold text-base text-ink tracking-tight">VisionCart</span>
+            <span className="text-[11px] text-ink-muted">· Store Counter</span>
           </div>
-          <div>
-            <h2 className="font-semibold text-sm text-white flex items-center gap-1.5">
-              <span>Customer Cart</span>
-              {cart.total_items_count > 0 && (
-                <span className="bg-indigo-500/20 text-indigo-300 text-[10px] px-2 py-0.5 rounded-full font-bold border border-indigo-500/30">
-                  {cart.total_items_count} units
-                </span>
-              )}
-            </h2>
-          </div>
+          <p className="text-xs text-ink-muted mt-0.5">{todayDate}</p>
         </div>
 
         <div className="flex items-center space-x-2">
           <Link
             to="/guide#guide-4"
-            className="text-slate-400 hover:text-indigo-400 p-1 rounded-lg hover:bg-slate-800 transition-colors"
-            title="Cart Help Guide"
+            className="text-ink-muted hover:text-ink p-1 rounded-control hover:bg-counter-light transition-colors"
+            title="Cart guide"
           >
             <HelpCircle className="w-4 h-4" />
           </Link>
@@ -124,17 +122,17 @@ export const CartPanel: React.FC<CartPanelProps> = ({
             <button
               onClick={onClearCart}
               disabled={isCheckingOut}
-              className="text-xs text-slate-400 hover:text-rose-400 flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-slate-800/60 hover:bg-rose-950/40 border border-slate-700/60 transition-colors disabled:opacity-50"
+              className="text-xs text-ink-muted hover:text-signal flex items-center space-x-1 px-2 py-1 rounded-control hover:bg-signal-tint transition-colors disabled:opacity-40"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              <span>Clear Cart</span>
+              <span>Clear</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* Manual Product Add Bar */}
-      <div className="p-3 bg-slate-950/40 border-b border-slate-800 flex items-center gap-2">
+      {/* Manual Product Search / Catalog Bar */}
+      <div className="p-3 border-b border-counter-grey bg-paper flex items-center gap-2">
         <select
           value={selectedProductId}
           onChange={(e) => {
@@ -142,52 +140,49 @@ export const CartPanel: React.FC<CartPanelProps> = ({
             setStockWarning(null);
           }}
           disabled={isLoadingCatalog || isCheckingOut}
-          className="flex-1 bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500"
+          className="flex-1 bg-surface border border-counter-grey rounded-control px-3 py-2 text-xs text-ink focus:outline-none focus:border-primary"
         >
-          <option value="">+ Add manual item from catalog...</option>
+          <option value="">Search or select product from catalog...</option>
           {catalog.map((prod) => (
             <option key={prod.id} value={prod.id}>
-              {prod.name} (₹{(prod.price_paise / 100).toFixed(2)}) - Stock: {prod.stock}
+              {prod.name} (₹{(prod.price_paise / 100).toFixed(2)}) · {prod.stock} in stock
             </option>
           ))}
         </select>
         <button
           onClick={handleManualAdd}
           disabled={!selectedProductId || isCheckingOut}
-          className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-white disabled:text-slate-500 rounded-xl text-xs font-semibold flex items-center space-x-1 transition-colors"
+          className="px-3.5 py-2 bg-surface hover:bg-counter-light border border-counter-grey disabled:opacity-40 text-ink rounded-control text-xs font-semibold flex items-center space-x-1 transition-colors"
         >
-          <Plus className="w-3.5 h-3.5" />
+          <Plus className="w-3.5 h-3.5 text-primary" />
           <span>Add</span>
         </button>
       </div>
 
-      {/* Stock Limit Warning Banner */}
+      {/* Insufficient Stock Warning */}
       {stockWarning && (
-        <div className="mx-3 mt-3 p-2.5 bg-amber-950/80 border border-amber-800/80 rounded-xl text-xs text-amber-200 flex items-start space-x-2">
-          <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+        <div className="mx-3 mt-3 p-2.5 bg-signal-tint border border-signal/20 rounded-control text-xs text-signal flex items-start space-x-2">
+          <AlertCircle className="w-4 h-4 text-signal flex-shrink-0 mt-0.5" />
           <div className="flex-1">
-            <span className="font-semibold block">Stock Limit Warning</span>
-            <span className="text-[11px] text-amber-300">{stockWarning}</span>
+            <span className="font-semibold block">Stock limit</span>
+            <span className="text-[11px] text-signal">{stockWarning}</span>
           </div>
           <button
             onClick={() => setStockWarning(null)}
-            className="text-amber-400 hover:text-amber-200 text-xs px-1"
+            className="text-signal hover:text-red-900 text-xs px-1 font-bold"
           >
-            ✕
+            ×
           </button>
         </div>
       )}
 
-      {/* Cart Items List */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2.5 divide-y divide-slate-800/50">
+      {/* Receipt Line Items List */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[160px]">
         {cart.items.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-500">
-            <div className="w-12 h-12 rounded-xl bg-slate-800/60 flex items-center justify-center mb-3 text-slate-400">
-              <Sparkles className="w-6 h-6" />
-            </div>
-            <p className="text-sm font-medium text-slate-400">Your cart is empty</p>
-            <p className="text-xs text-slate-500 max-w-xs mt-1">
-              Hold products in front of the camera or manually select from the dropdown above to add items.
+          <div className="h-full flex flex-col items-center justify-center text-center p-6 text-ink-muted">
+            <p className="text-sm font-medium text-ink">Receipt is empty</p>
+            <p className="text-xs text-ink-muted max-w-xs mt-1.5 leading-relaxed">
+              Hold an item up to the camera or search the catalog below.
             </p>
           </div>
         ) : (
@@ -198,49 +193,54 @@ export const CartPanel: React.FC<CartPanelProps> = ({
             return (
               <div
                 key={item.product_id}
-                className="pt-2.5 first:pt-0 flex items-center justify-between gap-3 text-xs"
+                className="animate-receipt-item flex items-center justify-between gap-3 text-xs border-b border-counter-grey/60 pb-2.5 last:border-b-0"
               >
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-slate-200 truncate">{item.product_name}</p>
-                  <div className="flex items-center space-x-2 text-[11px] text-slate-400">
-                    <span className="font-mono text-slate-500">{item.product_sku || (item as any).sku}</span>
-                    <span>•</span>
+                {/* Item Details */}
+                <div className="flex-1 min-w-0 pr-1">
+                  <p className="font-medium text-ink truncate text-sm">{item.product_name}</p>
+                  <div className="flex items-center space-x-2 text-[11px] text-ink-muted font-mono tabular-nums mt-0.5">
                     <span>{formatRupees(item.unit_price_paise)} ea</span>
-                    <span>•</span>
-                    <span className="text-indigo-400">GST {item.gst_rate}%</span>
+                    <span>·</span>
+                    <span>GST {item.gst_rate}%</span>
                   </div>
                 </div>
 
-                {/* Quantity Controls */}
-                <div className="flex items-center space-x-1.5 bg-slate-950 px-2 py-1 rounded-xl border border-slate-800">
+                {/* 44px Accessible Touch Stepper */}
+                <div className="flex items-center space-x-1">
                   <button
                     onClick={() => {
                       setStockWarning(null);
                       onUpdateQuantity(item.product_id, item.quantity - 1);
                     }}
                     disabled={isCheckingOut}
-                    className="w-6 h-6 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition-colors disabled:opacity-50"
+                    aria-label={`Decrease quantity of ${item.product_name}`}
+                    className="min-w-[40px] min-h-[40px] rounded-control border border-counter-grey bg-paper hover:bg-counter-light text-ink flex items-center justify-center transition-colors disabled:opacity-40"
                   >
-                    <Minus className="w-3 h-3" />
+                    <Minus className="w-3.5 h-3.5" />
                   </button>
-                  <span className="w-7 text-center font-bold text-white text-xs">{item.quantity}</span>
+
+                  <span className="w-8 text-center font-mono tabular-nums font-bold text-sm text-ink">
+                    {item.quantity}
+                  </span>
+
                   <button
                     onClick={() => handleIncrement(item.product_id, item.quantity)}
                     disabled={isCheckingOut || isAtMax}
-                    className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${
+                    aria-label={`Increase quantity of ${item.product_name}`}
+                    className={`min-w-[40px] min-h-[40px] rounded-control border flex items-center justify-center transition-colors ${
                       isAtMax
-                        ? 'bg-slate-800/40 text-slate-600 cursor-not-allowed'
-                        : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                        ? 'border-counter-grey/60 bg-counter-light text-ink-muted/40 cursor-not-allowed'
+                        : 'border-counter-grey bg-paper hover:bg-counter-light text-ink'
                     }`}
-                    title={isAtMax ? `Max available stock reached (${maxStock})` : 'Increase quantity'}
+                    title={isAtMax ? `Stock limit reached (${maxStock})` : 'Increase quantity'}
                   >
-                    <Plus className="w-3 h-3" />
+                    <Plus className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
-                {/* Line Total & Remove */}
-                <div className="text-right flex items-center space-x-2">
-                  <span className="font-bold text-white text-xs whitespace-nowrap">
+                {/* Line Total in Tabular Mono */}
+                <div className="text-right pl-1 min-w-[70px]">
+                  <span className="font-mono tabular-nums font-semibold text-ink text-sm block">
                     {formatRupees(item.line_total_paise)}
                   </span>
                   <button
@@ -249,9 +249,9 @@ export const CartPanel: React.FC<CartPanelProps> = ({
                       onRemoveItem(item.product_id);
                     }}
                     disabled={isCheckingOut}
-                    className="text-slate-500 hover:text-rose-400 p-1 transition-colors disabled:opacity-50"
+                    className="text-[11px] text-ink-muted hover:text-signal transition-colors disabled:opacity-40 mt-0.5"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    Remove
                   </button>
                 </div>
               </div>
@@ -260,62 +260,61 @@ export const CartPanel: React.FC<CartPanelProps> = ({
         )}
       </div>
 
-      {/* Error Banner */}
+      {/* Checkout Error */}
       {checkoutError && (
-        <div className="m-3 p-3 bg-rose-950/80 border border-rose-800/80 rounded-xl text-xs text-rose-200 flex items-start space-x-2 shadow-lg">
-          <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+        <div className="mx-4 mb-2 p-3 bg-signal-tint border border-signal/20 rounded-control text-xs text-signal flex items-start space-x-2">
+          <AlertCircle className="w-4 h-4 text-signal flex-shrink-0 mt-0.5" />
           <div className="flex-1">
-            <p className="font-semibold">Checkout Failed</p>
-            <p className="text-[11px] text-rose-300 mt-0.5">{checkoutError}</p>
+            <p className="font-semibold">Checkout error</p>
+            <p className="text-[11px] text-signal mt-0.5 leading-relaxed">{checkoutError}</p>
           </div>
         </div>
       )}
 
-      {/* GST Calculation & Summary Box */}
-      <div className="p-4 bg-slate-950 border-t border-slate-800 space-y-2">
-        <div className="flex justify-between text-xs text-slate-400">
-          <span>Taxable Value (Subtotal)</span>
+      {/* Dashed divider */}
+      <div className="border-t border-dashed border-counter-grey mx-4" />
+
+      {/* Receipt Financial Totals (DM Mono, Tabular Numerals) */}
+      <div className="p-4 space-y-1.5 font-mono tabular-nums text-xs bg-paper/40">
+        <div className="flex justify-between text-ink-muted">
+          <span>Taxable value</span>
           <span>{formatRupees(cart.subtotal_paise)}</span>
         </div>
-        <div className="flex justify-between text-xs text-slate-400">
-          <span>CGST (Central Tax)</span>
+        <div className="flex justify-between text-ink-muted">
+          <span>CGST</span>
           <span>{formatRupees(cart.cgst_total_paise ?? cart.cgst_paise ?? 0)}</span>
         </div>
-        <div className="flex justify-between text-xs text-slate-400">
-          <span>SGST (State Tax)</span>
+        <div className="flex justify-between text-ink-muted">
+          <span>SGST</span>
           <span>{formatRupees(cart.sgst_total_paise ?? cart.sgst_paise ?? 0)}</span>
         </div>
         {cart.rounding_paise !== 0 && (
-          <div className="flex justify-between text-xs text-slate-400">
+          <div className="flex justify-between text-ink-muted">
             <span>Rounding</span>
             <span>{formatRupees(cart.rounding_paise)}</span>
           </div>
         )}
 
-        <div className="border-t border-slate-800 pt-2 flex justify-between items-baseline">
-          <span className="text-sm font-bold text-white">Grand Total</span>
-          <span className="text-xl font-extrabold text-emerald-400">
+        <div className="border-t border-counter-grey pt-2 mt-2 flex justify-between items-baseline font-body">
+          <span className="text-base font-heading font-bold text-ink">Total</span>
+          <span className="text-2xl font-mono tabular-nums font-bold text-primary">
             {formatRupees(cart.grand_total_paise ?? cart.total_paise ?? 0)}
           </span>
         </div>
 
-        {/* Checkout Button */}
+        {/* Full-width bottle green action button */}
         <button
           onClick={onCheckout}
           disabled={cart.items.length === 0 || isCheckingOut}
-          className="w-full mt-3 py-3 px-4 rounded-xl font-bold text-sm bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:from-slate-800 disabled:to-slate-800 text-white disabled:text-slate-500 flex items-center justify-center space-x-2 shadow-lg shadow-emerald-600/20 disabled:shadow-none transition-all hover:scale-[1.01]"
+          className="w-full mt-3 py-3.5 px-4 rounded-control font-semibold text-sm bg-primary hover:bg-primary-hover disabled:bg-counter-grey disabled:text-ink-muted text-white flex items-center justify-center space-x-2 transition-colors shadow-sm disabled:cursor-not-allowed"
         >
-          {isCheckingOut ? (
-            <>
-              <RefreshCw className="w-4 h-4 animate-spin" />
-              <span>Processing Transaction...</span>
-            </>
-          ) : (
-            <>
-              <span>Pay & Generate Tax Invoice</span>
-              <ArrowRight className="w-4 h-4" />
-            </>
-          )}
+          <span>
+            {isCheckingOut
+              ? 'Processing sale...'
+              : cart.items.length === 0
+              ? 'Add an item to continue'
+              : 'Take payment'}
+          </span>
         </button>
       </div>
     </div>

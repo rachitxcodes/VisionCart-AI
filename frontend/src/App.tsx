@@ -32,7 +32,7 @@ export const AppContent: React.FC = () => {
         path="/cashier"
         element={
           <ProtectedRoute allowedRoles={['ADMIN', 'CASHIER']}>
-            <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+            <div className="min-h-screen bg-paper text-ink font-body flex flex-col">
               <Navbar />
               <main className="flex-1">
                 <CashierPage />
@@ -47,7 +47,7 @@ export const AppContent: React.FC = () => {
         path="/admin/dashboard"
         element={
           <ProtectedRoute allowedRoles={['ADMIN']}>
-            <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+            <div className="min-h-screen bg-paper text-ink font-body flex flex-col">
               <Navbar />
               <main className="flex-1">
                 <AdminDashboardPage />
@@ -62,7 +62,7 @@ export const AppContent: React.FC = () => {
         path="/admin/products"
         element={
           <ProtectedRoute allowedRoles={['ADMIN']}>
-            <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+            <div className="min-h-screen bg-paper text-ink font-body flex flex-col">
               <Navbar />
               <main className="flex-1">
                 <AdminProductsPage />
@@ -77,7 +77,7 @@ export const AppContent: React.FC = () => {
         path="/guide"
         element={
           <ProtectedRoute allowedRoles={['ADMIN', 'CASHIER']}>
-            <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+            <div className="min-h-screen bg-paper text-ink font-body flex flex-col">
               <Navbar />
               <main className="flex-1">
                 <GuideHubPage />
