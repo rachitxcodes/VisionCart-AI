@@ -199,32 +199,24 @@ export const FAQ_LIST: FAQItem[] = [
 
 // Pure filtering logic
 export function filterAndSortGuides(
-  guides: GuideStep[],
-  audience: 'all' | 'cashier' | 'admin',
-  query: string
+  guidesList: GuideStep[],
+  selectedAudience: 'all' | 'cashier' | 'admin',
+  searchQuery: string
 ): GuideStep[] {
-  const q = query.trim().toLowerCase();
+  let list = guidesList;
+  if (selectedAudience === 'cashier') {
+    list = [...guidesList].sort((a, b) => (a.audience === 'cashier' ? -1 : b.audience === 'cashier' ? 1 : 0));
+  } else if (selectedAudience === 'admin') {
+    list = [...guidesList].sort((a, b) => (a.audience === 'admin' ? -1 : b.audience === 'admin' ? 1 : 0));
+  }
 
-  return guides
-    .filter((g) => {
-      const matchesAudience = audience === 'all' || g.audience === audience || g.audience === 'both';
-      if (!matchesAudience) return false;
-      if (!q) return true;
-      return (
-        g.title.toLowerCase().includes(q) ||
-        g.steps.some((s) => s.toLowerCase().includes(q))
-      );
-    })
-    .sort((a, b) => {
-      if (audience === 'cashier') {
-        if (a.audience === 'cashier' && b.audience !== 'cashier') return -1;
-        if (b.audience === 'cashier' && a.audience !== 'cashier') return 1;
-      } else if (audience === 'admin') {
-        if (a.audience === 'admin' && b.audience !== 'admin') return -1;
-        if (b.audience === 'admin' && a.audience !== 'admin') return 1;
-      }
-      return 0;
-    });
+  if (!searchQuery.trim()) return list;
+  const q = searchQuery.toLowerCase();
+  return list.filter(
+    (g) =>
+      g.title.toLowerCase().includes(q) ||
+      g.steps.some((s) => s.toLowerCase().includes(q))
+  );
 }
 
 export function filterFaqs(faqs: FAQItem[], query: string): FAQItem[] {
