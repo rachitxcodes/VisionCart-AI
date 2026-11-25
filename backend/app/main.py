@@ -9,7 +9,7 @@ from slowapi.errors import RateLimitExceeded
 from app.core.config import settings
 from app.core.logging import setup_logging, logger
 from app.core.limiter import limiter
-from app.routers import health, auth, products, detection, cart, checkout, analytics
+from app.routers import health, auth, products, detection, cart, checkout, analytics, corrections
 
 setup_logging()
 
@@ -71,3 +71,4 @@ app.include_router(cart.router)
 app.include_router(checkout.router)
 app.include_router(checkout.invoices_router)
 app.include_router(analytics.router)
+app.include_router(corrections.router)

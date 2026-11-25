@@ -174,6 +174,28 @@ export const GUIDES: GuideStep[] = [
       'Check the Critical Low-Stock Alerts grid at the bottom to reorder depleted inventory.',
     ],
   },
+  {
+    id: 'guide-10',
+    title: 'Fixing a Wrong or Unknown Item',
+    audience: 'cashier',
+    steps: [
+      'When the camera detects an uncataloged or low-confidence item, review it in the "Needs a look" tray above your cart.',
+      'Click "Choose product" to search your catalog and pick the matching product to add it to the cart.',
+      'If the camera saw a non-retail object or reflection, click "Not a product" to dismiss it immediately.',
+      'If an already detected line item was misidentified, click "Wrong item?" on that line to swap it to the correct product.',
+    ],
+  },
+  {
+    id: 'guide-11',
+    title: 'Using Corrections to Improve the Model',
+    audience: 'admin',
+    steps: [
+      'Open the Corrections page (/admin/corrections) from the top navigation bar.',
+      'Review cashier corrections, common misclassifications, and frame image crops.',
+      'Delete any erroneous or accidental correction entries using the trash icon.',
+      'Click "Export YOLO Dataset (.zip)" to download normalized YOLOv8 image frames and label files for retraining.',
+    ],
+  },
 ];
 
 // FAQ Items

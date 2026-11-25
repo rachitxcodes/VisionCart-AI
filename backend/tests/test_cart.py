@@ -3,12 +3,12 @@ from httpx import AsyncClient, ASGITransport
 
 from app.main import app
 from app.core.config import settings
-from app.services.cart_service import TemporalFrameSmoother
+from app.services.cart_service import TemporalFrameSmoother, cart_manager
 
 
-def test_temporal_frame_smoother_hysteresis():
-    """Unit test for temporal smoothing: N consecutive frames to add, M frames absence to remove, flicker suppression."""
-    smoother = TemporalFrameSmoother(n_frames=3, m_frames=5)
+def test_temporal_frame_smoother_no_removal_on_absence():
+    """Unit test: N consecutive frames to confirm, NO removal on absence (even for 100+ frames)."""
+    smoother = TemporalFrameSmoother(n_frames=3)
 
     # 1. Appearance for 1 frame -> Not yet confirmed
     res1 = smoother.update(["banana"])
@@ -18,43 +18,83 @@ def test_temporal_frame_smoother_hysteresis():
     res2 = smoother.update(["banana"])
     assert res2.get("banana", 0) == 0
 
-    # 3. Appearance for 3rd frame (N=3) -> Confirmed!
+    # 3. Appearance for 3rd frame (N=3) -> Confirmed at qty 1!
     res3 = smoother.update(["banana"])
     assert res3.get("banana") == 1
 
-    # 4. Flicker Suppression: Item absent for 1 frame (< M=5)
+    # 4. Item leaves view for 1 frame -> stays in cart
     res4 = smoother.update([])
-    assert res4.get("banana") == 1, "Item should not flicker away after 1 missing frame!"
+    assert res4.get("banana") == 1
 
-    # 5. Item returns on frame 5
-    res5 = smoother.update(["banana"])
-    assert res5.get("banana") == 1
-
-    # 6. Absence for 5 consecutive frames (M=5) -> Item drops to 0
-    for _ in range(4):
-        smoother.update([])
-        assert smoother.confirmed_counts.get("banana") == 1
-    # 5th absent frame
-    res_final = smoother.update([])
-    assert res_final.get("banana", 0) == 0, "Item should be removed after M=5 absent frames!"
+    # 5. Item leaves view for 100+ frames -> remains in cart with qty 1 (NEVER auto-removed)
+    for _ in range(105):
+        res_empty = smoother.update([])
+        assert res_empty.get("banana") == 1
+    assert smoother.confirmed_counts.get("banana") == 1
 
 
-def test_multi_quantity_hysteresis():
-    """Verify that multiple items of the same class require N frames to increment."""
-    smoother = TemporalFrameSmoother(n_frames=3, m_frames=5)
+def test_showing_one_item_repeatedly_keeps_quantity_one():
+    """Verify showing 1 item repeatedly keeps quantity 1 (not summed across appearances)."""
+    smoother = TemporalFrameSmoother(n_frames=3)
 
-    # Confirm 1st item
+    # First appearance: 3 frames
     for _ in range(3):
-        smoother.update(["bottle"])
+        smoother.update(["banana"])
+    assert smoother.confirmed_counts.get("banana") == 1
+
+    # Leave view for 10 frames
+    for _ in range(10):
+        smoother.update([])
+    assert smoother.confirmed_counts.get("banana") == 1
+
+    # Second appearance of same 1 item for 5 frames -> stays 1, not 2
+    for _ in range(5):
+        res = smoother.update(["banana"])
+        assert res.get("banana") == 1
+
+    # Leave view again for 20 frames
+    for _ in range(20):
+        smoother.update([])
+    assert smoother.confirmed_counts.get("banana") == 1
+
+    # Third appearance for 10 frames -> still stays 1
+    for _ in range(10):
+        res = smoother.update(["banana"])
+        assert res.get("banana") == 1
+
+
+def test_two_items_together_gives_quantity_two_and_stays_when_one_leaves():
+    """Verify 2 items together confirms qty 2, and stays 2 when one or both leave."""
+    smoother = TemporalFrameSmoother(n_frames=3)
+
+    # 2 bottles presented together for 3 frames
+    smoother.update(["bottle", "bottle"])
+    smoother.update(["bottle", "bottle"])
+    res = smoother.update(["bottle", "bottle"])
+    assert res.get("bottle") == 2
+
+    # One bottle leaves view (only 1 bottle seen for 10 frames) -> stays 2!
+    for _ in range(10):
+        res_one = smoother.update(["bottle"])
+        assert res_one.get("bottle") == 2
+
+    # Both bottles leave view for 100+ frames -> stays 2!
+    for _ in range(100):
+        res_none = smoother.update([])
+        assert res_none.get("bottle") == 2
+
+
+def test_smoother_reset_after_clear():
+    """Verify smoother reset clears all confirmed counts and streaks."""
+    smoother = TemporalFrameSmoother(n_frames=3)
+    for _ in range(3):
+        smoother.update(["banana", "bottle"])
+    assert smoother.confirmed_counts.get("banana") == 1
     assert smoother.confirmed_counts.get("bottle") == 1
 
-    # Present 2 bottles
-    smoother.update(["bottle", "bottle"])
-    assert smoother.confirmed_counts.get("bottle") == 1  # 2nd bottle not yet confirmed
-    smoother.update(["bottle", "bottle"])
-    assert smoother.confirmed_counts.get("bottle") == 1
-    res = smoother.update(["bottle", "bottle"])
-    assert res.get("bottle") == 2  # 2nd bottle confirmed!
+    smoother.reset()
+    assert len(smoother.confirmed_counts) == 0
+    assert len(smoother.candidate_streaks) == 0
 
 
 @pytest.fixture
@@ -72,14 +112,14 @@ async def cashier_client():
 
 @pytest.mark.asyncio
 async def test_cart_sync_and_unmapped_classes(cashier_client):
-    """Verify frame sync maps COCO classes to catalog and ignores unmapped classes."""
+    """Verify frame sync maps COCO classes to catalog, ignores unmapped classes, and retains items on absence."""
     client = cashier_client
     session_id = "test_sync_session"
 
     # Clear before test
     await client.post(f"/api/cart/clear?session_id={session_id}")
 
-    # Feed 3 frames with "banana", "bottle", and an unmapped class "backpack"
+    # Feed 3 frames with "banana", "bottle", and unmapped classes "backpack", "person"
     for _ in range(3):
         resp = await client.post(
             "/api/cart/sync-frame",
@@ -95,7 +135,6 @@ async def test_cart_sync_and_unmapped_classes(cashier_client):
     skus = [i["sku"] for i in data["items"]]
     assert "PRD-BAN-001" in skus
     assert "PRD-BOT-004" in skus
-    # Verify unmapped classes ("backpack", "person") are NOT in cart
     names = [i["product_name"] for i in data["items"]]
     assert not any("backpack" in n.lower() or "person" in n.lower() for n in names)
 
@@ -115,15 +154,23 @@ async def test_cart_sync_and_unmapped_classes(cashier_client):
     assert data["sgst_paise"] == 360
     assert data["total_paise"] == 10720
 
+    # Feed 10 empty frames: items MUST remain in the cart
+    for _ in range(10):
+        resp_empty = await client.post(
+            "/api/cart/sync-frame",
+            json={"session_id": session_id, "detected_classes": []},
+        )
+        assert resp_empty.json()["total_items"] == 2
+
 
 @pytest.mark.asyncio
 async def test_cart_manual_overrides(cashier_client):
-    """Verify cashier manual quantity changes and item removal."""
+    """Verify cashier manual quantity changes, downward protection, and item removal."""
     client = cashier_client
     session_id = "test_manual_session"
     await client.post(f"/api/cart/clear?session_id={session_id}")
 
-    # Feed 3 frames with banana
+    # Feed 3 frames with banana -> quantity 1
     for _ in range(3):
         resp = await client.post(
             "/api/cart/sync-frame",
@@ -146,7 +193,15 @@ async def test_cart_manual_overrides(cashier_client):
     assert updated_items[0]["is_manual"] is True
     assert updated_items[0]["taxable_value_paise"] == 24000
 
-    # 2. Manually add another product (e.g. Donut PRD-DON-007)
+    # 2. Camera frames with 1 banana arrive: manual edit is respected, quantity stays 4
+    for _ in range(5):
+        resp_lower = await client.post(
+            "/api/cart/sync-frame",
+            json={"session_id": session_id, "detected_classes": ["banana"]},
+        )
+        assert resp_lower.json()["items"][0]["quantity"] == 4
+
+    # 3. Manually add another product (e.g. Donut PRD-DON-007)
     prod_resp = await client.get("/api/products?search=donut")
     donut_id = prod_resp.json()[0]["id"]
     resp_donut = await client.post(
@@ -157,16 +212,15 @@ async def test_cart_manual_overrides(cashier_client):
     cart_after_donut = resp_donut.json()
     assert cart_after_donut["total_items"] == 6
 
-    # 3. Manually delete banana
+    # 4. Manually delete banana
     resp_del = await client.delete(f"/api/cart/item/{prod_id}?session_id={session_id}")
     assert resp_del.status_code == 200
     remaining_ids = [i["product_id"] for i in resp_del.json()["items"]]
     assert prod_id not in remaining_ids
     assert donut_id in remaining_ids
 
-    # 4. Clear cart
+    # 5. Clear cart: resets all state
     resp_clear = await client.post(f"/api/cart/clear?session_id={session_id}")
     assert resp_clear.status_code == 200
     resp_empty = await client.get(f"/api/cart?session_id={session_id}")
     assert resp_empty.json()["total_items"] == 0
-

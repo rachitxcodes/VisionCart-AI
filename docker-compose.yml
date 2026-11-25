@@ -38,8 +38,11 @@ services:
       - MODEL_PATH=${MODEL_PATH:-ml/weights/yolov8n.pt}
       - CONFIDENCE_THRESHOLD=0.45
       - DETECTOR_DEVICE=cpu
+      - ACCEPT_CONF=0.50
+      - REVIEW_CONF=0.25
+      - CORRECTIONS_DIR=/app/data/corrections
+      - CORRECTIONS_MAX_MB=2
       - SMOOTHING_N_FRAMES=3
-      - SMOOTHING_M_FRAMES=5
       - SEED_ADMIN_EMAIL=admin@visioncart.local
       - SEED_ADMIN_PASSWORD=Admin@1234
       - SEED_CASHIER_EMAIL=cashier@visioncart.local
@@ -50,6 +53,7 @@ services:
       - "8000:8000"
     volumes:
       - ./ml/weights:/app/ml/weights
+      - corrections_data:/app/data/corrections
     command: >
       sh -c "alembic upgrade head &&
              python -m app.seed &&
@@ -68,4 +72,5 @@ services:
 
 volumes:
   pgdata:
+  corrections_data:
 

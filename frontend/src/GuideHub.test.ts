@@ -16,8 +16,8 @@ describe('Guide Hub (Job 2) Unit Tests', () => {
     });
   });
 
-  it('contains exactly 9 plain-language step-by-step guides with IDs', () => {
-    expect(GUIDES).toHaveLength(9);
+  it('contains all plain-language step-by-step guides with IDs', () => {
+    expect(GUIDES).toHaveLength(11);
     const expectedIds = [
       'guide-1',
       'guide-2',
@@ -28,6 +28,8 @@ describe('Guide Hub (Job 2) Unit Tests', () => {
       'guide-7',
       'guide-8',
       'guide-9',
+      'guide-10',
+      'guide-11',
     ];
     expect(GUIDES.map((g) => g.id)).toEqual(expectedIds);
 
@@ -39,14 +41,14 @@ describe('Guide Hub (Job 2) Unit Tests', () => {
 
   it('implements role-aware ordering for Cashier audience', () => {
     const cashierSorted = filterAndSortGuides(GUIDES, 'cashier', '');
-    expect(cashierSorted).toHaveLength(9);
+    expect(cashierSorted).toHaveLength(11);
     // Cashier guides come first
     expect(cashierSorted[0].audience).toBe('cashier');
   });
 
   it('implements role-aware ordering for Admin audience', () => {
     const adminSorted = filterAndSortGuides(GUIDES, 'admin', '');
-    expect(adminSorted).toHaveLength(9);
+    expect(adminSorted).toHaveLength(11);
     // Admin guides come first
     expect(adminSorted[0].audience).toBe('admin');
   });

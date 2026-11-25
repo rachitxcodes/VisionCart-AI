@@ -16,6 +16,8 @@ class SyncDetectionsRequest(BaseModel):
     detected_classes: Optional[List[str]] = None
     detections: Optional[List[Any]] = None
     session_id: Optional[str] = "default"
+    frame_width: Optional[int] = 640
+    frame_height: Optional[int] = 480
 
     def get_classes(self) -> List[str]:
         if self.detected_classes is not None:
@@ -33,6 +35,11 @@ class SyncDetectionsRequest(BaseModel):
         return []
 
 
+class DismissCandidateRequest(BaseModel):
+    predicted_class: str
+    session_id: Optional[str] = "default"
+
+
 @router.post("/sync-frame", response_model=CartSummarySchema)
 @router.post("/sync", response_model=CartSummarySchema)
 async def sync_frame_detections(
@@ -40,14 +47,29 @@ async def sync_frame_detections(
     current_user: User = Depends(require_cashier_or_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    """Feed detected classes or detection objects from a camera frame into the smoother and retrieve the stabilized cart."""
+    """Feed detected classes or detection objects from a camera frame into classifier and smoother."""
     sess_id = payload.session_id or "default"
     session_key = f"user_{current_user.id}_{sess_id}"
     return await cart_manager.sync_frame_detections(
         db=db,
         session_id=session_key,
-        detected_classes=payload.get_classes(),
+        detected_classes=payload.detected_classes,
+        detections=payload.detections,
+        frame_width=payload.frame_width or 640,
+        frame_height=payload.frame_height or 480,
     )
+
+
+@router.post("/review-candidate/dismiss")
+async def dismiss_review_candidate(
+    payload: DismissCandidateRequest,
+    current_user: User = Depends(require_cashier_or_admin),
+):
+    """Dismiss a review candidate so it is not re-offered during the current sale."""
+    sess_id = payload.session_id or "default"
+    session_key = f"user_{current_user.id}_{sess_id}"
+    cart_manager.suppress_candidate(session_key, payload.predicted_class)
+    return {"message": f"Candidate '{payload.predicted_class}' dismissed."}
 
 
 @router.get("", response_model=CartSummarySchema)

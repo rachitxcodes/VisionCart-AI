@@ -24,6 +24,23 @@ class CartItemSchema(BaseModel):
         return self
 
 
+class NormalizedBox(BaseModel):
+    x: float = Field(..., description="Normalized top-left x [0.0 - 1.0]")
+    y: float = Field(..., description="Normalized top-left y [0.0 - 1.0]")
+    w: float = Field(..., description="Normalized width [0.0 - 1.0]")
+    h: float = Field(..., description="Normalized height [0.0 - 1.0]")
+
+
+class ReviewCandidate(BaseModel):
+    candidate_id: str
+    predicted_class: str
+    confidence: float
+    box: NormalizedBox
+    mapped_product_id: Optional[int] = None
+    mapped_product_name: Optional[str] = None
+    mapped_product_price_paise: Optional[int] = None
+
+
 class CartSummarySchema(BaseModel):
     items: List[CartItemSchema]
     total_items: int
@@ -36,6 +53,7 @@ class CartSummarySchema(BaseModel):
     rounding_paise: int = 0
     total_paise: int
     grand_total_paise: Optional[int] = None
+    review_candidates: List[ReviewCandidate] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def populate_aliases(self):

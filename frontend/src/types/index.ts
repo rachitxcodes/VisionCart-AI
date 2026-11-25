@@ -71,6 +71,23 @@ export interface DetectionItem {
   price_paise?: number | null;
 }
 
+export interface NormalizedBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export interface ReviewCandidate {
+  candidate_id: string;
+  predicted_class: string;
+  confidence: number;
+  box: NormalizedBox;
+  mapped_product_id?: number | null;
+  mapped_product_name?: string | null;
+  mapped_product_price_paise?: number | null;
+}
+
 export interface CartLineItem {
   product_id: number;
   product_name: string;
@@ -83,6 +100,7 @@ export interface CartLineItem {
   sgst_paise: number;
   line_total_paise: number;
   available_stock?: number;
+  is_manual?: boolean;
 }
 
 export interface CartSummary {
@@ -98,6 +116,7 @@ export interface CartSummary {
   cgst_paise?: number;
   sgst_paise?: number;
   total_paise?: number;
+  review_candidates?: ReviewCandidate[];
 }
 
 export interface InvoiceItem {
@@ -156,5 +175,57 @@ export interface LowStockAlert {
   stock: number;
   reorder_level: number;
   category: string;
+}
+
+export type CorrectionType = 'wrong_item' | 'unknown_item' | 'false_positive';
+
+export interface CorrectionCreateMeta {
+  session_id?: string;
+  correction_type: CorrectionType;
+  predicted_class?: string | null;
+  predicted_conf?: number | null;
+  box_x?: number | null;
+  box_y?: number | null;
+  box_w?: number | null;
+  box_h?: number | null;
+  corrected_product_id?: number | null;
+  corrected_label?: string | null;
+  frame_width?: number | null;
+  frame_height?: number | null;
+}
+
+export interface Correction {
+  id: number;
+  created_at: string;
+  session_id?: string;
+  cashier_user_id?: number;
+  cashier_name?: string;
+  correction_type: CorrectionType;
+  predicted_class?: string;
+  predicted_conf?: number;
+  box_x?: number;
+  box_y?: number;
+  box_w?: number;
+  box_h?: number;
+  corrected_product_id?: number;
+  corrected_product_name?: string;
+  corrected_label?: string;
+  image_url: string;
+  frame_width?: number;
+  frame_height?: number;
+}
+
+export interface CorrectionStats {
+  total: number;
+  by_type: {
+    wrong_item: number;
+    unknown_item: number;
+    false_positive: number;
+  };
+  top_confusions: {
+    predicted_class: string;
+    corrected_label: string;
+    count: number;
+  }[];
 }
 

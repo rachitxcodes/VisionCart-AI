@@ -52,4 +52,12 @@ export const cartApi = {
     });
     return response.data;
   },
+
+  dismissCandidate: async (sessionId: string, predictedClass: string) => {
+    const response = await api.post('/api/cart/review-candidate/dismiss', {
+      session_id: sessionId,
+      predicted_class: predictedClass,
+    });
+    return response.data;
+  },
 };

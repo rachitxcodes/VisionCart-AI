@@ -7,10 +7,15 @@ import { Camera, CameraOff, Video, AlertCircle, RefreshCw, HelpCircle } from 'lu
 
 interface CameraFeedProps {
   onDetections: (detections: DetectionItem[]) => void;
+  onFrameCaptured?: (frameDataUrl: string, width: number, height: number) => void;
   isProcessingCart: boolean;
 }
 
-export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessingCart }) => {
+export const CameraFeed: React.FC<CameraFeedProps> = ({
+  onDetections,
+  onFrameCaptured,
+  isProcessingCart,
+}) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -250,6 +255,7 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({ onDetections, isProcessi
       setLastInferenceTime(elapsed);
       setDetectionCount(res.count ?? res.detections?.length ?? 0);
       drawDetections(res.detections, inputWidth, inputHeight);
+      onFrameCaptured?.(base64Image, inputWidth, inputHeight);
       onDetections(res.detections);
     } catch (err: any) {
       console.error('Detection request failed:', err);

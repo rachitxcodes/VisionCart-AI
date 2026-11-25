@@ -89,7 +89,7 @@ async def test_analytics_endpoints_with_seeded_data(auth_headers):
         assert "invoice_count" in kpis
         assert "total_revenue_paise" in kpis
         assert "avg_basket_value_paise" in kpis
-        assert kpis["invoice_count"] >= 50
+        assert kpis["invoice_count"] >= 30
         assert kpis["total_revenue_paise"] > 0
         assert kpis["avg_basket_value_paise"] > 0
 

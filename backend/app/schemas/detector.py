@@ -1,6 +1,8 @@
 from typing import List, Optional
 from pydantic import BaseModel, Field, model_validator
 
+from app.schemas.cart import ReviewCandidate
+
 
 class BoundingBox(BaseModel):
     x1: float = Field(..., description="Top-left X coordinate")
@@ -26,6 +28,7 @@ class DetectionResponse(BaseModel):
     inference_time_ms: float
     detector_mode: str
     count: Optional[int] = None
+    review_candidates: List[ReviewCandidate] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def populate_count(self):

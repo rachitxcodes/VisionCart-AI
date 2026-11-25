@@ -70,3 +70,5 @@ ml/weights/*.onnx
 # Project-specific generated files
 backend/.env
 frontend/.env
+backend/data/corrections/
+data/corrections/

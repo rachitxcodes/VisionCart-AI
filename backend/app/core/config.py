@@ -37,9 +37,16 @@ class Settings(BaseSettings):
     CONFIDENCE_THRESHOLD: float = 0.45
     DETECTOR_DEVICE: str = "cpu"
 
-    # Temporal Smoothing
+    # Detection Confidence Thresholds (Correction Flow)
+    ACCEPT_CONF: float = 0.50
+    REVIEW_CONF: float = 0.25
+
+    # Corrections Storage
+    CORRECTIONS_DIR: str = "backend/data/corrections"
+    CORRECTIONS_MAX_MB: int = 2
+
+    # Temporal Smoothing (N frames consecutive appearance confirms item; items never auto-remove)
     SMOOTHING_N_FRAMES: int = 3
-    SMOOTHING_M_FRAMES: int = 5
 
     # Seed Admin & Cashier
     SEED_ADMIN_EMAIL: str = "admin@visioncart.local"

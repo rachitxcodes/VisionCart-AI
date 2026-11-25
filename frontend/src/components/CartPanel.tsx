@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { CartSummary, Product } from '../types';
+import { CartSummary, Product, CartLineItem } from '../types';
 import { productsApi } from '../api/products';
 import { ShoppingBag, Plus, Minus, Trash2, ArrowRight, AlertTriangle, RefreshCw, Sparkles, HelpCircle } from 'lucide-react';
 
@@ -10,6 +10,7 @@ interface CartPanelProps {
   onRemoveItem: (productId: number) => void;
   onClearCart: () => void;
   onCheckout: () => void;
+  onSwapItem?: (item: CartLineItem) => void;
   isCheckingOut: boolean;
   checkoutError: string | null;
 }
@@ -20,6 +21,7 @@ export const CartPanel: React.FC<CartPanelProps> = ({
   onRemoveItem,
   onClearCart,
   onCheckout,
+  onSwapItem,
   isCheckingOut,
   checkoutError,
 }) => {
@@ -209,6 +211,16 @@ export const CartPanel: React.FC<CartPanelProps> = ({
                     <span>•</span>
                     <span className="text-indigo-400">GST {item.gst_rate}%</span>
                   </div>
+                  {!item.is_manual && onSwapItem && (
+                    <button
+                      onClick={() => onSwapItem(item)}
+                      className="text-[11px] text-indigo-400 hover:text-indigo-300 hover:underline flex items-center space-x-1 mt-0.5"
+                      title="Change this product to another catalog item"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      <span>Wrong item?</span>
+                    </button>
+                  )}
                 </div>
 
                 {/* Quantity Controls */}

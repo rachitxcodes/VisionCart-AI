@@ -7,6 +7,7 @@ import { LoginPage } from './pages/LoginPage';
 import { CashierPage } from './pages/CashierPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { AdminProductsPage } from './pages/AdminProductsPage';
+import { AdminCorrectionsPage } from './pages/AdminCorrectionsPage';
 import { GuideHubPage } from './pages/GuideHubPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
@@ -66,6 +67,21 @@ export const AppContent: React.FC = () => {
               <Navbar />
               <main className="flex-1">
                 <AdminProductsPage />
+              </main>
+            </div>
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Admin Corrections Management */}
+      <Route
+        path="/admin/corrections"
+        element={
+          <ProtectedRoute allowedRoles={['ADMIN']}>
+            <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+              <Navbar />
+              <main className="flex-1">
+                <AdminCorrectionsPage />
               </main>
             </div>
           </ProtectedRoute>

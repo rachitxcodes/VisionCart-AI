@@ -55,8 +55,11 @@ def test_mock_detector_unit():
 
 
 @pytest.mark.asyncio
-async def test_detect_endpoint_multipart_upload(cashier_headers):
+async def test_detect_endpoint_multipart_upload(cashier_headers, monkeypatch):
     """Verify POST /api/detection/detect with file upload and catalog enrichment."""
+    import app.services.detector_service as ds
+    monkeypatch.setattr(ds, "_detector_instance", ds.MockDetector())
+
     transport = ASGITransport(app=app)
     test_jpeg = create_test_image_bytes(640, 480)
 
@@ -82,8 +85,11 @@ async def test_detect_endpoint_multipart_upload(cashier_headers):
 
 
 @pytest.mark.asyncio
-async def test_detect_endpoint_base64(cashier_headers):
+async def test_detect_endpoint_base64(cashier_headers, monkeypatch):
     """Verify POST /api/detection/detect-base64 with webcam data URI."""
+    import app.services.detector_service as ds
+    monkeypatch.setattr(ds, "_detector_instance", ds.MockDetector())
+
     transport = ASGITransport(app=app)
     test_jpeg = create_test_image_bytes(320, 240)
     b64_str = "data:image/jpeg;base64," + base64.b64encode(test_jpeg).decode("utf-8")
